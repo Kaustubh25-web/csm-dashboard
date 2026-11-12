@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSM Dashboard · Essen Vision</title>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f3f3f3; --band:#b0c4df; --surface:#ffffff; --surface-2:#f3f3f3; --border:#dddbda; --border-2:#c9c9c9; --grid:#e5e5e5;
+  --text:#181818; --text-2:#444444; --muted:#706e6b;
+  --brand:#0176d3; --brand-d:#014486; --brand-2:#0176d3; --accent-bg:#eef4ff;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --good:#2e844a; --warn:#dd7a01; --crit:#ba0517; --none:#aeaeae;
+  --good-bg:#cdefc4; --warn-bg:#fef1cd; --crit-bg:#feded8; --none-bg:#ecebea;
+  --ord1:#032d60; --ord2:#014486; --ord3:#0b5cab; --ord4:#0176d3; --ord5:#1b96ff; --ord6:#78b0fd;
+  --ic-dash:#ef6e64; --ic-acct:#5867e8; --ic-event:#cb65ff; --ic-upload:#06a59a; --ic-home:#1b96ff;
+  --shadow:0 2px 2px 0 rgba(0,0,0,.10);
+  --radius:.25rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --bg:#181818; --band:#1d2a3c; --surface:#242424; --surface-2:#2d2d2d; --border:#3e3e3c; --border-2:#514f4d; --grid:#333;
+    --text:#f3f3f3; --text-2:#c9c9c9; --muted:#a0a0a0;
+    --brand:#1b96ff; --brand-d:#78b0fd; --brand-2:#1b96ff; --accent-bg:#1d2a3c;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --good:#45c65a; --warn:#fe9339; --crit:#fe5c4c;
+    --good-bg:#1c3a21; --warn-bg:#3d2b0e; --crit-bg:#45161a; --none-bg:#333;
+    --ord1:#d8e6fe; --ord2:#aacbff; --ord3:#78b0fd; --ord4:#1b96ff; --ord5:#0b5cab; --ord6:#014486;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif}
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:260px;background:linear-gradient(180deg,var(--band),var(--bg));z-index:-1}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+/* global header */
+header.top{position:sticky;top:0;z-index:30}
+.gh{display:flex;align-items:center;gap:14px;height:50px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--text)}
+.brand .logo{height:30px;padding:0 9px;border-radius:6px;background:linear-gradient(135deg,#032d60,#0176d3);color:#fff;display:grid;place-items:center;font-size:12px;letter-spacing:.5px}
+.gsearch{flex:1;max-width:560px;margin:0 auto;position:relative}
+.gsearch input[type=text]{width:100%;border:1px solid var(--border-2);border-radius:var(--radius);padding:6px 10px 6px 32px;background:var(--surface)}
+.gsearch svg{position:absolute;left:10px;top:9px;fill:var(--muted)}
+.gsearch .res{position:absolute;top:36px;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.16);display:none;max-height:340px;overflow:auto}
+.gsearch .res.on{display:block}
+.gsearch .res div{padding:8px 12px;cursor:pointer;display:flex;gap:10px;align-items:center}
+.gsearch .res div:hover,.gsearch .res div.act{background:var(--surface-2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;overflow:hidden}
+.avatar img{width:100%;height:100%}
+/* context bar */
+.cb{display:flex;align-items:stretch;gap:0;height:40px;padding:0 16px;background:var(--surface);border-bottom:3px solid var(--brand);box-shadow:0 2px 3px rgba(0,0,0,.12)}
+.waffle{display:grid;grid-template-columns:repeat(3,4px);gap:3px;align-self:center;margin-right:12px;padding:6px;border-radius:4px}
+.waffle i{width:4px;height:4px;border-radius:50%;background:var(--muted)}
+.appname{align-self:center;font-size:17px;font-weight:400;margin-right:22px;white-space:nowrap}
+nav.tabs{display:flex;gap:0}
+nav.tabs a{display:flex;align-items:center;padding:0 14px;text-decoration:none;color:var(--text);border-bottom:3px solid transparent;margin-bottom:-3px;font-size:13px}
+nav.tabs a:hover{background:var(--surface-2);border-bottom-color:var(--border-2)}
+nav.tabs a.on{border-bottom-color:var(--brand);font-weight:700;background:var(--accent-bg)}
+.spacer{flex:1}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filters label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+select,input[type=text],input[type=password],input[type=date],input[type=month],input[type=number],textarea{background:var(--surface);border:1px solid var(--border-2);border-radius:var(--radius);padding:5px 8px;min-height:32px}
+select:focus,input:focus,textarea:focus{outline:0;border-color:var(--brand);box-shadow:0 0 3px var(--brand)}
+.btn{border:1px solid var(--border-2);background:var(--surface);color:var(--brand);border-radius:var(--radius);padding:0 16px;height:32px;cursor:pointer;font-weight:400;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-d);border-color:var(--brand-d)}
+.btn.danger{color:var(--crit)}
+.btn.sm{height:24px;padding:0 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.who{font-size:12px;color:var(--muted)}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);white-space:nowrap}
+.sync i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.banner{margin:12px 16px 0;padding:8px 14px;border-radius:var(--radius);background:#fef1cd;color:#3e3e3c;font-size:13px;display:none;border-left:4px solid var(--warn)}
+@media (prefers-color-scheme: dark){ .banner{background:var(--warn-bg);color:var(--text)} }
+.banner.show{display:block}
+main{padding:12px 16px 60px;max-width:1600px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+/* page header */
+.ph{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.ph .eyebrow{font-size:12px;color:var(--text-2);line-height:1.2}
+.ph h1{font-size:18px;font-weight:700;margin:0;line-height:1.25}
+.icon{width:32px;height:32px;border-radius:var(--radius);display:grid;place-items:center;flex:none}
+.icon.lg{width:36px;height:36px}
+.icon svg{width:60%;height:60%;fill:#fff}
+.icon.sm{width:24px;height:24px}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;min-width:0}
+.card>h2,.card .toolbar h2{display:flex;align-items:center;gap:10px}
+.kpi{padding:12px 14px}
+.kpi .lab{font-size:12px;color:var(--text-2)}
+.kpi .val{font-size:30px;font-weight:300;margin-top:2px;color:var(--brand-d);font-variant-numeric:tabular-nums;line-height:1.2}
+@media (prefers-color-scheme: dark){ .kpi .val{color:var(--text)} }
+.kpi .sub{font-size:12px;color:var(--muted)}
+.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.wide-narrow{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+@media (max-width:1000px){.two,.wide-narrow{grid-template-columns:minmax(0,1fr)}}
+h2{font-size:14px;margin:0 0 2px;font-weight:700}
+.card .desc{font-size:12px;color:var(--muted);margin-bottom:10px}
+.sec{margin-top:12px}
+svg text{fill:var(--text-2);font-size:11px}
+svg .axis{stroke:var(--border)} svg .gl{stroke:var(--grid)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;font-size:12px;color:var(--text-2);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--border);border-top:1px solid var(--border);background:var(--surface-2);position:sticky;top:0;z-index:1;white-space:nowrap}
+table.t td{padding:6px 8px;border-bottom:1px solid var(--grid);vertical-align:middle}
+table.t tr.click{cursor:pointer} table.t tr:hover td{background:var(--surface-2)}
+table.t td.num,table.t th.num{text-align:right;font-variant-numeric:tabular-nums}
+table.t td b{color:var(--brand);font-weight:400} table.t tr.click td b:hover{text-decoration:underline}
+.scroll{overflow:auto;max-height:560px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:15rem;font-size:12px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.h-Green{background:var(--good-bg);color:var(--good)} .h-Yellow{background:var(--warn-bg);color:#8c4b02}
+.h-Red{background:var(--crit-bg);color:var(--crit)} .h-None{background:var(--none-bg);color:var(--muted)}
+@media (prefers-color-scheme: dark){ .h-Yellow{color:var(--warn)} }
+.late{color:var(--crit);font-weight:600}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.edit-grid td{padding:2px 4px}
+.edit-grid input,.edit-grid select{width:100%;min-width:60px;min-height:28px;padding:3px 6px;border-color:transparent;background:transparent}
+.edit-grid input:hover,.edit-grid select:hover{border-color:var(--border-2);background:var(--surface)}
+.edit-grid input.nm{min-width:150px;color:var(--brand)}
+.yn{min-width:58px!important}
+.edit-grid select[data-f=csm],.edit-grid select[data-f=conversion]{min-width:140px}
+.edit-grid input[data-f=pm],.edit-grid input[data-f=sdm]{min-width:100px}
+.edit-grid input[data-f=tool]{min-width:140px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.toolbar .grow{flex:1}
+.drop{border:1px dashed var(--border-2);border-radius:var(--radius);padding:28px;text-align:center;color:var(--text-2);background:var(--surface-2)}
+.drop.over{border-color:var(--brand);background:var(--accent-bg)}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}
+.form label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--text-2)}
+.form label.span2{grid-column:span 2}.form label.span4{grid-column:1/-1}
+@media (max-width:760px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.drawer-bg{position:fixed;inset:0;background:rgba(8,7,7,.6);z-index:40;display:none}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(900px,100%);background:var(--bg);z-index:41;transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column;box-shadow:-8px 0 24px rgba(0,0,0,.2)}
+.drawer.on{transform:none}.drawer-bg.on{display:block}
+.drawer .dh{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.drawer .db{padding:12px 16px;overflow:auto;flex:1}
+.drawer .df{padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.drawer .sect{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:0 16px 14px;margin-bottom:12px}
+.drawer h3{font-size:14px;font-weight:400;margin:0 -16px 12px;padding:8px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;color:var(--text)}
+.months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.chk{display:flex!important;flex-direction:row!important;align-items:center;gap:6px;color:var(--text)!important;font-size:13px!important}
+.highlights{display:flex;gap:28px;flex-wrap:wrap;margin-top:8px;font-size:12px}
+.highlights div span{display:block;color:var(--muted)}
+.highlights div b{font-weight:400;font-size:13px}
+/* path */
+.path{display:flex;margin:4px 0 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;box-shadow:var(--shadow)}
+.path button{flex:1;border:0;height:32px;margin-right:4px;background:var(--surface-2);color:var(--text);cursor:pointer;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%,12px 50%);font-size:13px;padding:0 18px}
+.path button:first-child{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%);border-radius:16px 0 0 16px}
+.path button:last-child{clip-path:polygon(0 0,100% 0,100% 100%,0 100%,12px 50%);border-radius:0 16px 16px 0;margin-right:0}
+.path button.done{background:#2e844a;color:#fff}
+.path button.cur{background:var(--brand-d);color:#fff;font-weight:700}
+.path button.lost{background:var(--crit);color:#fff;font-weight:700}
+.path button:hover:not(.cur):not(.done):not(.lost){background:var(--border)}
+.modal-bg{position:fixed;inset:0;background:rgba(8,7,7,.6);z-index:60;display:none;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);width:min(480px,92vw);box-shadow:0 2px 8px rgba(0,0,0,.25);overflow:hidden}
+.modal h2{font-size:20px;font-weight:400;text-align:center;padding:16px;margin:0;border-bottom:1px solid var(--border)}
+.modal p{margin:0;padding:20px 16px;color:var(--text-2)}
+.modal .mf{padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+#tip{position:fixed;z-index:80;pointer-events:none;background:#032d60;color:#fff;font-size:12px;padding:6px 9px;border-radius:var(--radius);display:none;max-width:280px;white-space:pre-line}
+.toast{position:fixed;left:50%;top:60px;transform:translateX(-50%);background:#2e844a;color:#fff;padding:10px 20px;border-radius:var(--radius);font-size:14px;z-index:90;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.toast.on{opacity:1}
+.progress{height:8px;background:var(--grid);border-radius:4px;overflow:hidden;margin-top:10px}
+.progress div{height:100%;background:var(--brand);width:0;transition:width .2s}
+.list-att li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--grid);align-items:center}
+.list-att li b{color:var(--brand);font-weight:400;cursor:pointer}
+.list-att{list-style:none;margin:0;padding:0;max-height:330px;overflow:auto}
+.small{font-size:12px;color:var(--muted)}
+.kv{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin:6px 0}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="gh">
+    <div class="brand"><div class="logo">ESSEN VISION</div></div>
+    <div class="gsearch"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M10 2a8 8 0 0 1 6.3 12.9l5.4 5.4-1.4 1.4-5.4-5.4A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>
+      <input type="text" id="gSearch" placeholder="Search accounts…" autocomplete="off"><div class="res" id="gRes"></div></div>
+    <span class="sync" id="sync"></span><div class="who" id="who"></div><div class="avatar" id="avatar">?</div>
+  </div>
+  <div class="cb">
+    <div class="waffle" title="CSM Console"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="appname">CSM Console</div>
+    <nav class="tabs">
+      <a href="#dashboard" data-v="dashboard">Dashboard</a>
+      <a href="#accounts" data-v="accounts">Accounts</a>
+      <a href="#meetings" data-v="meetings">Meetings</a>
+      <a href="#import" data-v="import">Data</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="filters">
+      <label>CSM <select id="fCsm"><option value="All">All CSMs</option></select></label>
+      <label>12 months from <input type="month" id="fStart"></label>
+    </div>
+  </div>
+</header>
+<div class="banner" id="banner"></div>
+<main>
+<!-- DASHBOARD -->
+<section class="view" id="v-dashboard">
+<div class="ph"><div class="icon lg" style="background:var(--ic-dash)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 2.6 6.4l1.4-1.4A7 7 0 1 1 19 12a7 7 0 0 1-2 5l1.4 1.4A9 9 0 0 0 12 3zm4.2 4.4-5.1 3.9a1.6 1.6 0 1 0 2.2 2.2z"/></svg></div><div><div class="eyebrow">Dashboard</div><h1>CSM Performance Overview</h1></div><div class="spacer"></div><div class="small" id="dashMeta"></div></div>
+  <div class="grid kpis" id="kpis"></div>
+  <div class="grid two sec">
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-dash)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 2.6 6.4l1.4-1.4A7 7 0 1 1 19 12a7 7 0 0 1-2 5l1.4 1.4A9 9 0 0 0 12 3zm4.2 4.4-5.1 3.9a1.6 1.6 0 1 0 2.2 2.2z"/></svg></div>Account health (CSAT)</h2><div class="desc">Green ≥ 4 · Yellow 3–3.9 · Red below 3 · No CSAT not yet captured</div><div id="chHealth"></div></div>
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-dash)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 2.6 6.4l1.4-1.4A7 7 0 1 1 19 12a7 7 0 0 1-2 5l1.4 1.4A9 9 0 0 0 12 3zm4.2 4.4-5.1 3.9a1.6 1.6 0 1 0 2.2 2.2z"/></svg></div>CSM engagement funnel</h2><div class="desc">Accounts that reached each milestone</div><div id="chFunnel"></div></div>
+  </div>
+  <div class="grid wide-narrow sec">
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div>Monthly activity</h2><div class="desc">Meetings logged and distinct accounts met, per month</div><div id="chMonthly"></div></div>
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div>Needs attention</h2><div class="desc">No meeting in 30+ days, or Red health</div><ul class="list-att" id="attn"></ul></div>
+  </div>
+  <div class="grid wide-narrow sec">
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div>Meetings by type</h2><div class="desc">Stacked per month</div><div id="chTypes"></div></div>
+    <div class="card"><h2><div class="icon sm" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div>Tower coverage</h2><div class="desc">Accounts using each service tower</div><div id="chTowers"></div></div>
+  </div>
+  <div class="card sec"><h2><div class="icon sm" style="background:var(--ic-dash)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 2.6 6.4l1.4-1.4A7 7 0 1 1 19 12a7 7 0 0 1-2 5l1.4 1.4A9 9 0 0 0 12 3zm4.2 4.4-5.1 3.9a1.6 1.6 0 1 0 2.2 2.2z"/></svg></div>CSM leaderboard</h2><div class="desc">All CSMs over the selected 12 months</div><div class="scroll" id="leader"></div></div>
+  <div class="card sec">
+    <div class="toolbar"><div><h2><div class="icon sm" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div>Account scorecard</h2><div class="desc" style="margin:0">Click a row to open and edit the account</div></div><div class="grow"></div><input type="text" id="scSearch" placeholder="Search accounts…"></div>
+    <div class="scroll" id="scorecard"></div>
+  </div>
+  <div class="card sec"><h2><div class="icon sm" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div>Monthly detail</h2><div class="desc">Accounts met each month</div><div class="scroll" id="monthTable"></div></div>
+</section>
+
+<!-- ACCOUNTS -->
+<section class="view" id="v-accounts">
+<div class="ph"><div class="icon lg" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div><div><div class="eyebrow">Accounts</div><h1>All Accounts <span class="small" id="acCount"></span></h1></div><div class="spacer"></div><input type="text" id="acSearch" placeholder="Search this list…"><button class="btn primary" id="btnAddAcct">New</button></div>
+  <div class="card">
+    <div class="toolbar">
+      <div><h2><div class="icon sm" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div>Master account tracker</h2><div class="desc" style="margin:0">Edit any cell directly; changes save automatically. Use “Open” for QBRs, cadence, towers and contacts.</div></div>
+      <div class="grow"></div>
+    </div>
+    <div class="scroll" style="max-height:none" id="acGrid"></div>
+  </div>
+</section>
+
+<!-- MEETINGS -->
+<section class="view" id="v-meetings">
+<div class="ph"><div class="icon lg" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div><div><div class="eyebrow">Activities</div><h1>Meetings <span class="small" id="mtCount"></span></h1></div><div class="spacer"></div></div>
+  <div class="card">
+    <h2><div class="icon sm" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div>Log a meeting</h2><div class="desc">Every CSM interaction feeds the dashboard</div>
+    <form id="mtForm" class="form">
+      <label class="span2">Account<select id="mtAcct" required></select></label>
+      <label>Date<input type="date" id="mtDate" required></label>
+      <label>Type<select id="mtType"></select></label>
+      <label class="span2">Summary<input type="text" id="mtSum"></label>
+      <label class="span2">Remarks / next steps<input type="text" id="mtNext"></label>
+      <div class="span4" style="grid-column:1/-1"><button class="btn primary" type="submit">Save meeting</button></div>
+    </form>
+  </div>
+  <div class="card sec">
+    <div class="toolbar"><h2 style="margin:0"><div class="icon sm" style="background:var(--ic-event)"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v17H4V4h3zm-1 7v10h12V9zm2 2h3v3H8z"/></svg></div>Meeting history</h2><div class="grow"></div>
+      <select id="mfAcct"><option value="">All accounts</option></select>
+      <select id="mfType"><option value="">All types</option></select>
+      <input type="text" id="mfSearch" placeholder="Search summary…">
+    </div>
+    <div class="scroll" id="mtTable"></div>
+  </div>
+</section>
+
+<!-- IMPORT / EXPORT -->
+<section class="view" id="v-import">
+<div class="ph"><div class="icon lg" style="background:var(--ic-upload)"><svg viewBox="0 0 24 24"><path d="M12 3 6 9h4v6h4V9h4zM4 17h16v4H4z"/></svg></div><div><div class="eyebrow">Data</div><h1>Upload / Export</h1></div><div class="spacer"></div></div>
+  <div class="card" style="margin-bottom:12px">
+    <h2><div class="icon sm" style="background:#24292f"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.2-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .4 1 .4 1.9.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg></div>GitHub connection</h2>
+    <div class="desc">Shared data lives in one JSON file in your <b>private</b> GitHub repository; every save is a commit. Each CSM connects once with their own fine-grained token (Contents: Read and write on that repo only). The token stays in this browser.</div>
+    <p id="ghState" class="small" style="margin:0 0 10px"></p>
+    <form id="ghForm" class="form" autocomplete="off">
+      <label>Owner (user or org)<input type="text" id="ghOwner" required placeholder="essenvision"></label>
+      <label>Data repository<input type="text" id="ghRepo" required placeholder="csm-data"></label>
+      <label>Branch<input type="text" id="ghBranch" value="main"></label>
+      <label>File path<input type="text" id="ghPath" value="data/csm-data.json"></label>
+      <label class="span2">Personal access token<input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="new-password"></label>
+      <div class="span2" style="grid-column:span 2;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <button class="btn primary" type="submit" id="btnConnect">Connect</button>
+        <button class="btn" type="button" id="btnDisconnect" style="display:none">Disconnect</button>
+        <a class="btn" id="ghHistory" target="_blank" rel="noopener" style="display:none;line-height:30px;text-decoration:none">Change history ↗</a>
+        <button class="btn" type="button" id="btnRefresh">Refresh now</button>
+      </div>
+    </form>
+  </div>
+  <div class="grid two">
+    <div class="card">
+      <h2><div class="icon sm" style="background:var(--ic-upload)"><svg viewBox="0 0 24 24"><path d="M12 3 6 9h4v6h4V9h4zM4 17h16v4H4z"/></svg></div>Upload master sheet</h2>
+      <div class="desc">Excel (.xlsx / .xls) or CSV. Reads the tabs <em>Master Account Tracker, Meetings, QBR Tracker, Monthly Cadence Tracker, Tower map, Ideas to Pitch Assessments, Account Towers - POC Mapping</em>. Any subset works; a single sheet with an “Account Name” column is treated as the master.</div>
+      <div class="drop" id="drop">Drop the workbook here, or <label style="color:var(--brand-2);cursor:pointer;text-decoration:underline">browse<input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv" hidden></label></div>
+      <div id="preview" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <h2><div class="icon sm" style="background:var(--ic-upload)"><svg viewBox="0 0 24 24"><path d="M12 3 6 9h4v6h4V9h4zM4 17h16v4H4z"/></svg></div>Export</h2>
+      <div class="desc">Download everything back to Excel in the same tab layout, edit offline if you like, and upload it again. With no data loaded it gives you an empty template.</div>
+      <button class="btn primary" id="btnExport">Download Excel</button>
+      <h2 style="margin-top:22px">CSM names</h2>
+      <div class="desc">Names offered in CSM dropdowns. Names used on accounts are added automatically.</div>
+      <div class="toolbar"><input type="text" id="newCsm" placeholder="Add a CSM name"><button class="btn" id="btnAddCsm">Add</button></div>
+      <div id="csmList"></div>
+      <h2 style="margin-top:22px">How upload merges</h2>
+      <ul class="small" style="padding-left:18px;margin:4px 0">
+        <li>Accounts match by name (not case-sensitive). Filled cells overwrite; blank cells never erase what is already saved.</li>
+        <li>Meetings are de-duplicated (same account, date, type and summary), so re-uploading the same file is safe.</li>
+        <li>“Replace all” clears every account and meeting first.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer" aria-label="Account details">
+  <div class="dh"><div class="icon lg" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div><div style="flex:1;min-width:0"><div class="eyebrow small">Account</div><h1 id="dwTitle" style="font-size:18px;margin:0">Account</h1><div class="highlights" id="dwHi"></div></div><button class="btn" id="dwClose">Close</button></div>
+  <div class="db" id="dwBody"></div>
+  <div class="df"><button class="btn danger" id="dwDelete">Delete</button><div style="flex:1"></div><button class="btn" id="dwCancel">Cancel</button><button class="btn primary" id="dwSave">Save</button></div>
+</aside>
+<div class="modal-bg" id="modalBg"><div class="modal"><h2 id="mTitle"></h2><p id="mText"></p><div class="mf"><button class="btn" id="mNo">Cancel</button><button class="btn primary" id="mYes">Confirm</button></div></div></div>
+<div id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ---------------- constants ---------------- */
+const TYPES = ["CSM Introduction","PM Meeting","CSM Follow up Meeting","Weekly Meeting","Monthly Cadence","QBR","Technical Discussion","Opportunity Discussion","Escalation Meeting","Action Item Review","Others"];
+const TYPE_GROUPS = [ // <= 8 chart slots, fixed order
+  {name:"QBR", types:["QBR"]},
+  {name:"Monthly Cadence", types:["Monthly Cadence"]},
+  {name:"Weekly Meeting", types:["Weekly Meeting"]},
+  {name:"CSM Intro & Follow-up", types:["CSM Introduction","CSM Follow up Meeting"]},
+  {name:"Opportunity Discussion", types:["Opportunity Discussion"]},
+  {name:"Technical / Action review", types:["Technical Discussion","Action Item Review"]},
+  {name:"Escalation", types:["Escalation Meeting"]},
+  {name:"Other", types:null}
+];
+const QBR_ST = ["Completed","Scheduled","Pending","Missed","N/A"];
+const CAD_ST = ["Done","Pending","Missed","N/A"];
+const CONV = ["Not Started","In Progress","Converted","Not Converted"];
+const TOWERS = ["Data","Applications and Database","Cloud/DevSecOps","Identity/Digital Trust","SOC (EDR/XDR/SIEM)","SASE and Proxy","GRC"];
+const FY_MONTHS = ["Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ---------------- state ---------------- */
+const S = { accounts:new Map(), meetings:new Map(), settings:{csms:[]}, mode:"local", canWrite:true, myId:null, loaded:false };
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const todayISO = () => { const d=new Date(); return iso(d.getFullYear(),d.getMonth()+1,d.getDate()); };
+const iso = (y,m,d) => `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+const fmtDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}-${MON[+m-1]}-${y.slice(2)}`; };
+const daysBetween = (a,b) => Math.round((Date.parse(b)-Date.parse(a))/86400000);
+const ym = s => s ? s.slice(0,7) : "";
+const addMonths = (ymStr,k) => { let [y,m]=ymStr.split("-").map(Number); m+=k; y+=Math.floor((m-1)/12); m=((m-1)%12+12)%12+1; return `${y}-${String(m).padStart(2,"0")}`; };
+const ymLabel = s => { const [y,m]=s.split("-"); return `${MON[+m-1]}-${y.slice(2)}`; };
+const isY = v => /^y/i.test(String(v||"").trim());
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"),2600); }
+function confirmBox(title,text,yes="Confirm"){ return new Promise(res=>{ $("#mTitle").textContent=title; $("#mText").textContent=text; $("#mYes").textContent=yes; $("#modalBg").classList.add("on");
+  const done=v=>{ $("#modalBg").classList.remove("on"); $("#mYes").onclick=$("#mNo").onclick=null; res(v); };
+  $("#mYes").onclick=()=>done(true); $("#mNo").onclick=()=>done(false); }); }
+function banner(msg){ const b=$("#banner"); if(!msg){b.classList.remove("show");return;} b.textContent=msg; b.classList.add("show"); }
+
+/* ---------------- derived account metrics ---------------- */
+function qbrDone(a){ const q=a.qbr||[]; return q.some(x=>x&&x.s) ? q.filter(x=>x&&x.s==="Completed").length : num(a.qbrDoneManual); }
+function qbrTarget(a){ return num(a.qbrTarget)||4; }
+function cadDone(a){ const c=a.cad||{}; const vals=Object.values(c).filter(Boolean); return vals.length ? vals.filter(v=>v==="Done").length : num(a.cadDoneManual); }
+function cadTarget(a){ return num(a.cadTarget)||12; }
+function health(a){ const c=num(a.csat); if(!c) return "None"; return c>=4?"Green":c>=3?"Yellow":"Red"; }
+const HEALTH_LABEL = {Green:"Green",Yellow:"Yellow",Red:"Red",None:"No CSAT"};
+function lastMeeting(id){ let best=""; const t=todayISO(); for(const m of S.meetings.values()){ if(m.accountId===id && m.date && m.date<=t && m.date>best) best=m.date; } return best; }
+function typeGroup(t){ for(const g of TYPE_GROUPS){ if(g.types && g.types.includes(t)) return g.name; } return "Other"; }
+
+/* ---------------- configuration (edit these defaults for your team) ---------------- */
+// Pre-fill the private data repository so CSMs only need to paste their own token.
+const CONFIG = { owner: "", repo: "", branch: "main", path: "data/csm-data.json" };
+
+/* ---------------- data layer: GitHub repo as the shared store ---------------- */
+const GH = { cfg:null, token:null, sha:null, etag:null, cache:null, login:null, pending:[], flushing:false, timer:null, again:false, poll:null };
+const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
+const emptyData = () => ({ version:1, accounts:{}, meetings:{}, settings:{csms:[]} });
+function clean(o){ return JSON.parse(JSON.stringify(o, (k,v)=> v===undefined?null:v)); }
+function stamp(body){ return Object.assign(body,{updatedAt:new Date().toISOString(), updatedBy:S.myId||null}); }
+function snapshotData(){ return { version:1, accounts:Object.fromEntries(S.accounts), meetings:Object.fromEntries(S.meetings), settings:{csms:[...S.settings.csms]} }; }
+function adopt(data, reapplyPending=true){
+  const d=clone(data||emptyData());
+  if(reapplyPending) applyOps(d, GH.pending);
+  S.accounts=new Map(Object.entries(d.accounts||{})); S.meetings=new Map(Object.entries(d.meetings||{}));
+  S.settings={csms:Array.isArray((d.settings||{}).csms)?[...d.settings.csms]:[]};
+  scheduleRender();
+}
+const clone = o => JSON.parse(JSON.stringify(o));
+function applyOps(d, ops){
+  d.accounts=d.accounts||{}; d.meetings=d.meetings||{}; d.settings=d.settings||{csms:[]};
+  for(const op of ops){
+    const coll = op.k==="a" ? d.accounts : op.k==="m" ? d.meetings : null;
+    if(op.k==="s"){ d.settings.csms=[...op.csms]; continue; }
+    if(op.del){ delete coll[op.id]; continue; }
+    if(op.patch && coll[op.id]) Object.assign(coll[op.id], clone(op.patch)); else coll[op.id]=clone(op.body);
+  }
+  return d;
+}
+function diff(oldB, newB){ if(!oldB) return null; const p={}; for(const k of new Set([...Object.keys(oldB),...Object.keys(newB)])){ if(JSON.stringify(oldB[k])!==JSON.stringify(newB[k])) p[k]=newB[k]===undefined?null:newB[k]; } return p; }
+function record(op){
+  if(S.mode==="local"){ persistLocal(); scheduleRender(); return Promise.resolve(); }
+  GH.pending.push(op); setSync("pending"); scheduleRender();
+  clearTimeout(GH.timer); GH.timer=setTimeout(flush, 700);
+  return Promise.resolve();
+}
+async function saveAccount(id, body){ body=stamp(clean(body)); const prev=S.accounts.get(id); const patch=diff(prev,body); S.accounts.set(id, clone(body)); return record({k:"a",id,body,patch}); }
+async function deleteAccount(id){ S.accounts.delete(id); return record({k:"a",id,del:true}); }
+async function saveMeeting(id, body){ body=stamp(clean(body)); const prev=S.meetings.get(id); const patch=diff(prev,body); S.meetings.set(id, clone(body)); return record({k:"m",id,body,patch}); }
+async function deleteMeeting(id){ S.meetings.delete(id); return record({k:"m",id,del:true}); }
+async function saveSettings(){ return record({k:"s",csms:[...S.settings.csms]}); }
+let persistT=null;
+function persistLocal(){ clearTimeout(persistT); persistT=setTimeout(()=>LS.set("csm.local", JSON.stringify(snapshotData())),300); }
+
+/* GitHub REST helpers */
+function b64e(str){ const bytes=new TextEncoder().encode(str); let bin=""; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin); }
+function b64d(b64){ const bin=atob(String(b64).replace(/\s/g,"")); return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
+async function ghFetch(method, url, {body, headers={}}={}){
+  const h=Object.assign({Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",Authorization:"Bearer "+GH.token}, headers);
+  if(body) h["Content-Type"]="application/json";
+  let res; try{ res=await fetch("https://api.github.com"+url,{method,headers:h,body:body?JSON.stringify(body):undefined,cache:"no-store"}); }
+  catch(e){ const err=new Error("Network error: can’t reach GitHub"); err.status=0; throw err; }
+  return res;
+}
+async function ghError(res){ let msg=""; try{ msg=(await res.json()).message||""; }catch(e){} const err=new Error(`GitHub ${res.status}${msg?": "+msg:""}`); err.status=res.status; return err; }
+const filePath = () => `/repos/${encodeURIComponent(GH.cfg.owner)}/${encodeURIComponent(GH.cfg.repo)}/contents/${GH.cfg.path.split("/").map(encodeURIComponent).join("/")}`;
+async function ghRead(useEtag){
+  const q="?ref="+encodeURIComponent(GH.cfg.branch);
+  const res=await ghFetch("GET", filePath()+q, {headers: useEtag&&GH.etag?{"If-None-Match":GH.etag}:{}});
+  if(res.status===304) return {unchanged:true};
+  if(res.status===404) return {sha:null, data:emptyData(), missing:true};
+  if(!res.ok) throw await ghError(res);
+  const j=await res.json(); let text="";
+  if(j.encoding==="base64" && j.content) text=b64d(j.content);
+  else if(j.size>0){ const raw=await ghFetch("GET", filePath()+q, {headers:{Accept:"application/vnd.github.raw+json"}}); if(!raw.ok) throw await ghError(raw); text=await raw.text(); }
+  GH.etag=res.headers.get("ETag");
+  let data; try{ data=text.trim()?JSON.parse(text):emptyData(); }catch(e){ throw new Error("The data file in GitHub is not valid JSON. Fix or delete it in the repo."); }
+  return {sha:j.sha, data};
+}
+async function ghWrite(data, sha, message){
+  const body={message, content:b64e(JSON.stringify(data,null,1)+"\n"), branch:GH.cfg.branch}; if(sha) body.sha=sha;
+  const res=await ghFetch("PUT", filePath(), {body});
+  if(res.status===409||res.status===422) return {conflict:true};
+  if(!res.ok) throw await ghError(res);
+  const j=await res.json(); return {sha:j.content.sha};
+}
+async function flush(){
+  if(S.mode!=="github") return;
+  if(GH.flushing){ GH.again=true; return; }
+  if(!GH.pending.length) return;
+  GH.flushing=true; const ops=GH.pending.splice(0); setSync("saving");
+  try{
+    let done=false;
+    for(let attempt=0; attempt<6 && !done; attempt++){
+      const cur = (attempt===0 && GH.cache) ? {sha:GH.sha, data:clone(GH.cache)} : await ghRead(false);
+      applyOps(cur.data, ops); cur.data.updatedAt=new Date().toISOString();
+      const kinds=[...new Set(ops.map(o=>o.k==="a"?"account":o.k==="m"?"meeting":"settings"))].join(", ");
+      const w=await ghWrite(cur.data, cur.sha, `CSM dashboard: ${ops.length} ${kinds} change${ops.length>1?"s":""}${GH.login?" by @"+GH.login:""}`);
+      if(w.conflict){ GH.cache=null; await new Promise(r=>setTimeout(r,250+Math.random()*500)); continue; }
+      GH.sha=w.sha; GH.cache=cur.data; GH.etag=null; done=true;
+      adopt(cur.data, true);
+    }
+    if(!done) throw new Error("Too many simultaneous edits. Retrying shortly.");
+    setSync(GH.pending.length?"pending":"saved");
+  }catch(e){
+    GH.pending.unshift(...ops); setSync("error", e.message);
+    if(e.status===401){ banner("Your GitHub token was rejected (expired or revoked). Reconnect on the Data tab."); }
+    else if(e.status===403||e.status===404){ banner("GitHub refused the save. Your token needs Contents: Read and write on the data repo."); }
+    else { clearTimeout(GH.timer); GH.timer=setTimeout(flush, 8000); }
+  }finally{
+    GH.flushing=false;
+    if(GH.again){ GH.again=false; if(GH.pending.length){ clearTimeout(GH.timer); GH.timer=setTimeout(flush,300); } }
+  }
+}
+function flushNow(){ return new Promise(res=>{ clearTimeout(GH.timer); const tick=async()=>{ if(S.mode!=="github"){ res(); return; } if(GH.flushing){ setTimeout(tick,200); return; } if(!GH.pending.length || syncState==="error"){ res(); return; } await flush(); setTimeout(tick,50); }; tick(); }); }
+async function pollRemote(){
+  if(S.mode!=="github" || GH.flushing || GH.pending.length || document.hidden) return;
+  try{ const r=await ghRead(true); if(r.unchanged) return; if(r.sha!==GH.sha){ GH.sha=r.sha; GH.cache=r.data; adopt(r.data,true); } if(syncState==="error") setSync("saved"); }
+  catch(e){ if(e.status===401) { setSync("error","Token rejected"); } }
+}
+let syncState="local";
+function setSync(state, msg){
+  syncState=state; const el=$("#sync"); if(!el) return;
+  const map={local:["Local only","var(--muted)","Not connected to GitHub: data stays in this browser. Connect on the Data tab."],
+    pending:["Unsaved changes…","var(--warn)",""],saving:["Saving to GitHub…","var(--brand)",""],saved:["All changes saved","var(--good)",GH.sha?"Saved in "+GH.cfg.owner+"/"+GH.cfg.repo:""],
+    error:["Sync error · retry","var(--crit)",msg||""], readonly:["View only","var(--muted)","Your token can read but not write the data repo"]};
+  const [t,c,title]=map[state]; el.innerHTML=`<i style="background:${c}"></i>${esc(t)}`; el.title=title||"";
+}
+$("#sync")&&0;
+
+async function connect(cfg, token, {silent=false}={}){
+  GH.cfg=cfg; GH.token=token;
+  const me=await ghFetch("GET","/user"); if(!me.ok){ const e=await ghError(me); if(me.status===401) e.message="Token not accepted by GitHub (check it was copied fully and hasn’t expired)"; throw e; }
+  const u=await me.json(); GH.login=u.login; S.myId=u.login;
+  const rr=await ghFetch("GET",`/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`);
+  if(rr.status===404) throw new Error(`Repository ${cfg.owner}/${cfg.repo} not found, or this token has no access to it`);
+  if(!rr.ok) throw await ghError(rr);
+  const repo=await rr.json(); S.canWrite=!!(repo.permissions && (repo.permissions.push||repo.permissions.admin||repo.permissions.maintain));
+  const r=await ghRead(false);
+  const local=LS.get("csm.local"); let migrated=false;
+  S.mode="github"; GH.pending=[]; GH.sha=r.sha; GH.cache=r.data; GH.etag=null;
+  if((r.missing || (!Object.keys(r.data.accounts||{}).length && !Object.keys(r.data.meetings||{}).length)) && local && S.canWrite){
+    try{ const ld=JSON.parse(local); if(Object.keys(ld.accounts||{}).length){ const w=await ghWrite(Object.assign(ld,{updatedAt:new Date().toISOString()}), r.sha, `CSM dashboard: initial data from @${GH.login}`); if(!w.conflict){ GH.sha=w.sha; GH.cache=ld; migrated=true; } } }catch(e){}
+  }
+  adopt(GH.cache,false);
+  LS.set("csm.gh", JSON.stringify({...cfg, token}));
+  $("#who").textContent="@"+u.login; const av=$("#avatar"); av.textContent=""; if(u.avatar_url){ const im=new Image(); im.src=u.avatar_url; im.alt=""; av.appendChild(im); } else av.textContent=u.login.slice(0,2).toUpperCase();
+  setSync(S.canWrite?"saved":"readonly"); banner(S.canWrite?"":"You have read-only access to the data repo. Ask an admin for write access to edit.");
+  applyWriteState(); renderConn();
+  clearInterval(GH.poll); GH.poll=setInterval(pollRemote, 30000);
+  if(!silent) toast(migrated?"Connected · your local data was copied to GitHub":"Connected to GitHub");
+}
+function disconnect(){
+  if(GH.pending.length && !window.__forceDisc){ toast("Wait for changes to finish saving"); return; }
+  clearInterval(GH.poll); LS.del("csm.gh"); Object.assign(GH,{cfg:null,token:null,sha:null,cache:null,etag:null,login:null,pending:[]});
+  S.mode="local"; S.canWrite=true; S.myId=null; $("#who").textContent=""; $("#avatar").textContent="?";
+  const local=LS.get("csm.local"); adopt(local?JSON.parse(local):emptyData(), false);
+  setSync("local"); banner("Not connected to GitHub: changes are saved in this browser only. Connect on the Data tab to share with your team."); renderConn(); applyWriteState();
+}
+function renderConn(){
+  const c=GH.cfg||(()=>{ try{ return JSON.parse(LS.get("csm.gh")||"null"); }catch(e){ return null; } })()||CONFIG;
+  $("#ghOwner").value=c.owner||CONFIG.owner; $("#ghRepo").value=c.repo||CONFIG.repo; $("#ghBranch").value=c.branch||"main"; $("#ghPath").value=c.path||CONFIG.path;
+  const on=S.mode==="github";
+  $("#ghState").innerHTML = on ? `Connected as <b>@${esc(GH.login)}</b> to <code>${esc(GH.cfg.owner)}/${esc(GH.cfg.repo)}</code> · <code>${esc(GH.cfg.path)}</code>${S.canWrite?"":" · read-only"}` : "Not connected. Data is kept in this browser only.";
+  $("#btnConnect").textContent = on ? "Reconnect" : "Connect";
+  $("#btnDisconnect").style.display = on ? "" : "none";
+  if(on) $("#ghToken").value="";
+  const hist=$("#ghHistory"); if(hist){ if(on){ hist.href=`https://github.com/${encodeURIComponent(GH.cfg.owner)}/${encodeURIComponent(GH.cfg.repo)}/commits/${encodeURIComponent(GH.cfg.branch)}/${GH.cfg.path}`; hist.style.display=""; } else hist.style.display="none"; }
+}
+async function init(){
+  setSync("local"); renderConn();
+  const saved=(()=>{ try{ return JSON.parse(LS.get("csm.gh")||"null"); }catch(e){ return null; } })();
+  const local=LS.get("csm.local"); if(local){ try{ adopt(JSON.parse(local),false); }catch(e){} }
+  if(saved && saved.token){
+    banner("Connecting to GitHub…");
+    try{ await connect({owner:saved.owner,repo:saved.repo,branch:saved.branch||"main",path:saved.path||CONFIG.path}, saved.token, {silent:true}); S.loaded=true; return; }
+    catch(e){ S.mode="local"; banner("Couldn’t connect to GitHub ("+e.message+"). Showing data saved in this browser. Reconnect on the Data tab."); setSync("error", e.message); }
+  } else {
+    banner("Not connected to GitHub: changes are saved in this browser only. Connect on the Data tab to share with your team.");
+  }
+  S.loaded=true; applyWriteState(); scheduleRender();
+}
+window.addEventListener("beforeunload", e=>{ if(GH.pending.length||GH.flushing){ flush(); e.preventDefault(); e.returnValue=""; } });
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) pollRemote(); });
+function slug(name){ return (String(name).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60))||"acct"; }
+function newAcctId(name){ let base="a-"+slug(name), id=base, i=2; while(S.accounts.has(id)) id=base+"-"+(i++); return id; }
+function hash(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193); } let h2=5381; for(let i=0;i<s.length;i++) h2=(Math.imul(h2,33)^s.charCodeAt(i))>>>0; return (h>>>0).toString(16)+h2.toString(16); }
+function meetingKey(m){ return "m-"+hash([m.accountId,m.date,m.type,(m.summary||"").trim().toLowerCase()].join("|")); }
+function applyWriteState(){ $$("[data-write]").forEach(el=>el.disabled=!S.canWrite); ["#btnAddAcct","#dwSave","#dwDelete","#btnAddCsm"].forEach(s=>{ const el=$(s); if(el) el.disabled=!S.canWrite; }); const f=$("#mtForm button"); if(f) f.disabled=!S.canWrite; }
+
+/* ---------------- render scheduling ---------------- */
+let rq=false, deferredGrid=false;
+function scheduleRender(){ if(rq) return; rq=true; requestAnimationFrame(()=>{ rq=false; renderAll(); }); }
+function csmList(){ const set=new Set(S.settings.csms.filter(Boolean)); for(const a of S.accounts.values()) if(a.csm) set.add(a.csm); return [...set].sort((a,b)=>a.localeCompare(b)); }
+function acctList(){ return [...S.accounts.entries()].map(([id,a])=>({id,...a})).sort((x,y)=>String(x.name||"").localeCompare(String(y.name||""))); }
+function sel(){ return $("#fCsm").value; }
+function filteredAccounts(){ const c=sel(); return acctList().filter(a=>c==="All"||a.csm===c); }
+function period(){ const s=$("#fStart").value; return Array.from({length:12},(_,k)=>addMonths(s,k)); }
+
+function renderAll(){
+  // filters
+  const cs=csmList(), cur=$("#fCsm").value;
+  $("#fCsm").innerHTML=`<option value="All">All CSMs</option>`+cs.map(c=>`<option>${esc(c)}</option>`).join("");
+  const want=S.wantCsm||cur; $("#fCsm").value = cs.includes(want)?want:(cs.includes(cur)?cur:"All");
+  renderDashboard();
+  const grid=$("#acGrid"); if(grid.contains(document.activeElement)) deferredGrid=true; else renderAccounts();
+  renderMeetingsView();
+  renderCsmSettings();
+  applyWriteState();
+}
+
+/* ---------------- charts (SVG) ---------------- */
+function tipAttr(t){ return `data-tip="${esc(t)}"`; }
+function donut(items){
+  const total=items.reduce((s,i)=>s+i.value,0); const R=70,r=46,cx=90,cy=90;
+  if(!total) return `<div class="empty">No accounts yet</div>`;
+  let a0=-Math.PI/2, paths="";
+  const gap = items.filter(i=>i.value).length>1 ? 0.025 : 0;
+  for(const it of items){ if(!it.value) continue; const a1=a0+it.value/total*Math.PI*2;
+    const s=a0+gap/2, e=a1-gap/2, large=(e-s)>Math.PI?1:0;
+    const p=(ang,rad)=>`${cx+rad*Math.cos(ang)},${cy+rad*Math.sin(ang)}`;
+    const d = it.value===total ? `M${cx},${cy-R}A${R},${R} 0 1 1 ${cx-0.01},${cy-R}L${cx-0.01},${cy-r}A${r},${r} 0 1 0 ${cx},${cy-r}Z`
+      : `M${p(s,R)}A${R},${R} 0 ${large} 1 ${p(e,R)}L${p(e,r)}A${r},${r} 0 ${large} 0 ${p(s,r)}Z`;
+    paths+=`<path d="${d}" fill="${it.color}" ${tipAttr(`${it.label}: ${it.value} (${Math.round(it.value/total*100)}%)`)}/>`; a0=a1; }
+  const rows=items.map(it=>`<tr><td><span class="pill h-${it.key}">${esc(it.label)}</span></td><td class="num">${it.value}</td><td class="num">${total?Math.round(it.value/total*100):0}%</td></tr>`).join("");
+  return `<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Health mix">${paths}<text x="90" y="88" text-anchor="middle" style="font-size:24px;font-weight:700;fill:var(--text)">${total}</text><text x="90" y="106" text-anchor="middle">accounts</text></svg>
+  <table class="t" style="width:auto;min-width:220px"><thead><tr><th>Status</th><th class="num">Accounts</th><th class="num">Share</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function hbars(rows, {max, colorFn, fmt=(v)=>v, pctOf}={}){
+  if(!rows.length) return `<div class="empty">No data</div>`;
+  const W=520, lw=170, rh=26, H=rows.length*rh+4; max = max || Math.max(1,...rows.map(r=>r.value));
+  const bw=W-lw-60;
+  let g=""; rows.forEach((r,i)=>{ const y=i*rh+4, w=Math.max(r.value?3:0, r.value/max*bw);
+    const lab = pctOf ? `${r.value} (${Math.round(r.value/Math.max(1,pctOf)*100)}%)` : fmt(r.value);
+    g+=`<text x="${lw-8}" y="${y+14}" text-anchor="end">${esc(r.label)}</text>
+    <rect x="${lw}" y="${y+3}" width="${bw}" height="16" fill="transparent" ${tipAttr(`${r.label}: ${lab}`)}/>
+    <rect x="${lw}" y="${y+3}" width="${w}" height="16" rx="4" fill="${colorFn?colorFn(i):"var(--s1)"}" ${tipAttr(`${r.label}: ${lab}`)}/>
+    <text x="${lw+w+6}" y="${y+15}" style="fill:var(--text);font-weight:600">${esc(lab)}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:${H+4}px" role="img">${g}</svg>`;
+}
+function columns(cats, series, {stacked=false, height=240}={}){
+  const W=720, H=height, pl=34, pr=8, pt=10, pb=26; const iw=W-pl-pr, ih=H-pt-pb;
+  const totals=cats.map((_,i)=>stacked?series.reduce((s,se)=>s+se.values[i],0):Math.max(0,...series.map(se=>se.values[i])));
+  const maxV=Math.max(1,...totals); const step=niceStep(maxV); const top=Math.ceil(maxV/step)*step;
+  let g=""; for(let v=0; v<=top; v+=step){ const y=pt+ih-(v/top)*ih; g+=`<line class="gl" x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}"/><text x="${pl-6}" y="${y+4}" text-anchor="end">${v}</text>`; }
+  const band=iw/cats.length; const n=stacked?1:series.length; const bw=Math.min(28, (band*0.7)/n);
+  cats.forEach((c,i)=>{ const x0=pl+band*i+(band-bw*n-(n-1)*2)/2; let acc=0;
+    const tipLines=[ymLabel(c), ...series.map(se=>`${se.name}: ${se.values[i]}`)].join("\n");
+    g+=`<rect x="${pl+band*i}" y="${pt}" width="${band}" height="${ih}" fill="transparent" ${tipAttr(tipLines)}/>`;
+    series.forEach((se,j)=>{ const v=se.values[i]; if(!v){ return; } const h=v/top*ih;
+      if(stacked){ const y=pt+ih-(acc+v)/top*ih; g+=`<rect x="${x0}" y="${y+1}" width="${bw}" height="${Math.max(1,h-2)}" fill="${se.color}" rx="2" ${tipAttr(tipLines)}/>`; acc+=v; }
+      else { const x=x0+j*(bw+2), y=pt+ih-h; g+=`<path d="M${x},${pt+ih}V${y+4}a4,4 0 0 1 4,-4h${bw-8}a4,4 0 0 1 4,4V${pt+ih}Z" fill="${se.color}" ${tipAttr(tipLines)}/>`; } });
+    g+=`<text x="${pl+band*i+band/2}" y="${H-8}" text-anchor="middle">${ymLabel(c)}</text>`; });
+  g+=`<line class="axis" x1="${pl}" x2="${W-pr}" y1="${pt+ih}" y2="${pt+ih}"/>`;
+  const leg=series.map(se=>`<span><i style="background:${se.color}"></i>${esc(se.name)}</span>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg><div class="legend">${leg}</div>`;
+}
+function niceStep(max){ const raw=max/4; const p=Math.pow(10,Math.floor(Math.log10(raw))); const n=raw/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
+
+/* ---------------- dashboard ---------------- */
+function renderDashboard(){
+  const accts=filteredAccounts(); const ids=new Set(accts.map(a=>a.id)); const months=period();
+  const pStart=months[0]+"-01", pEnd=addMonths(months[11],1)+"-01"; const t=todayISO();
+  const mts=[...S.meetings.values()].filter(m=>ids.has(m.accountId));
+  const inP=mts.filter(m=>m.date>=pStart && m.date<pEnd);
+  const engaged=new Set(inP.map(m=>m.accountId));
+  const last={}; for(const m of mts){ if(m.date && m.date<=t && (!last[m.accountId]||m.date>last[m.accountId])) last[m.accountId]=m.date; }
+  const cs=accts.filter(a=>num(a.csat)>0); const avg=cs.length?cs.reduce((s,a)=>s+num(a.csat),0)/cs.length:0;
+  const qd=accts.reduce((s,a)=>s+qbrDone(a),0), qt=accts.reduce((s,a)=>s+qbrTarget(a),0);
+  const cd=accts.reduce((s,a)=>s+cadDone(a),0), ct=accts.reduce((s,a)=>s+cadTarget(a),0);
+  const stale=accts.filter(a=>!last[a.id] || daysBetween(last[a.id],t)>30);
+  const N=accts.length, pct=(x)=> N?Math.round(x/N*100)+"% of accounts":"";
+  const cnt=f=>accts.filter(f).length;
+  const k=[
+    ["Total accounts", N, sel()==="All"?"All CSMs":sel()],
+    ["CSM activity initiated", cnt(a=>isY(a.introMeeting)), "Intro meeting done · "+pct(cnt(a=>isY(a.introMeeting)))],
+    ["Assessment / POC pitched", cnt(a=>isY(a.pitched)), pct(cnt(a=>isY(a.pitched)))],
+    ["Cross-sell opps generated", cnt(a=>isY(a.oppGenerated)), pct(cnt(a=>isY(a.oppGenerated)))],
+    ["Converted", cnt(a=>a.conversion==="Converted"), "Renewal / upsell"],
+    ["Not converted (lost)", cnt(a=>a.conversion==="Not Converted"), ""],
+    ["Avg CSAT (/5)", cs.length?avg.toFixed(1):"–", cs.length+" accounts rated"],
+    ["QBR completion", qt?Math.round(qd/qt*100)+"%":"–", `${qd} of ${qt} QBRs`],
+    ["Cadence completion", ct?Math.round(cd/ct*100)+"%":"–", `${cd} of ${ct} months`],
+    ["Meetings in period", inP.length, ymLabel(months[0])+" to "+ymLabel(months[11])],
+    ["Accounts engaged", engaged.size, pct(engaged.size)],
+    ["No meeting in 30+ days", stale.length, "Including never met"]
+  ];
+  $("#dashMeta").textContent=`${sel()==="All"?"All CSMs":sel()} · ${ymLabel(months[0])} to ${ymLabel(months[11])} · As of ${fmtDate(t)}`;
+  $("#kpis").innerHTML=k.map(([l,v,s])=>`<div class="card kpi"><div class="lab">${esc(l)}</div><div class="val">${esc(v)}</div><div class="sub">${esc(s)}</div></div>`).join("");
+
+  const hc={Green:0,Yellow:0,Red:0,None:0}; accts.forEach(a=>hc[health(a)]++);
+  $("#chHealth").innerHTML=donut([{key:"Green",label:"Green",value:hc.Green,color:"var(--good)"},{key:"Yellow",label:"Yellow",value:hc.Yellow,color:"var(--warn)"},{key:"Red",label:"Red",value:hc.Red,color:"var(--crit)"},{key:"None",label:"No CSAT",value:hc.None,color:"var(--none)"}]);
+
+  const stages=[["Scope doc received",a=>isY(a.scopeDoc)],["CSM intro mail sent",a=>isY(a.introMail)],["CSM intro meeting done",a=>isY(a.introMeeting)],["Assessment / POC pitched",a=>isY(a.pitched)],["Cross-sell opp generated",a=>isY(a.oppGenerated)],["Converted",a=>a.conversion==="Converted"]];
+  const ords=["--ord1","--ord2","--ord3","--ord4","--ord5","--ord6"];
+  $("#chFunnel").innerHTML = N ? hbars(stages.map(([l,f])=>({label:l,value:cnt(f)})),{max:N,pctOf:N,colorFn:i=>`var(${ords[i]})`}) : `<div class="empty">No accounts yet</div>`;
+
+  const per=months.map(mo=>{ const ms=inP.filter(m=>ym(m.date)===mo); return {mo, ms, accts:[...new Set(ms.map(m=>m.accountId))]}; });
+  $("#chMonthly").innerHTML=columns(months,[{name:"Meetings",color:"var(--s1)",values:per.map(p=>p.ms.length)},{name:"Accounts engaged",color:"var(--s2)",values:per.map(p=>p.accts.length)}]);
+  const colors=["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
+  $("#chTypes").innerHTML=columns(months,TYPE_GROUPS.map((g,i)=>({name:g.name,color:`var(${colors[i]})`,values:per.map(p=>p.ms.filter(m=>typeGroup(m.type)===g.name).length)})),{stacked:true});
+  $("#chTowers").innerHTML = N ? hbars(TOWERS.map(tw=>({label:tw,value:accts.filter(a=>isY((a.towers||{})[tw])).length})),{max:N,pctOf:N}) : `<div class="empty">No accounts yet</div>`;
+
+  // attention
+  const att=accts.map(a=>({a,d:last[a.id]?daysBetween(last[a.id],t):null,h:health(a)})).filter(x=>x.d===null||x.d>30||x.h==="Red")
+    .sort((x,y)=>(y.d??9999)-(x.d??9999));
+  $("#attn").innerHTML = att.length ? att.map(x=>`<li><span><b data-open="${esc(x.a.id)}">${esc(x.a.name)}</b><br><span class="small">${esc(x.a.csm||"No CSM")} · ${x.d===null?"never met":x.d+" days since last meeting"}</span></span><span style="display:flex;gap:6px;align-items:center">${x.h==="Red"?`<span class="pill h-Red">Red</span>`:""}<button class="btn sm" data-log="${esc(x.a.id)}" data-write>Log meeting</button></span></li>`).join("") : `<li class="small">All accounts met in the last 30 days.</li>`;
+
+  // leaderboard (all CSMs)
+  const all=acctList(); const rows=csmList().map(c=>{ const as=all.filter(a=>a.csm===c), aid=new Set(as.map(a=>a.id));
+    const ms=[...S.meetings.values()].filter(m=>aid.has(m.accountId)&&m.date>=pStart&&m.date<pEnd);
+    const rc=as.filter(a=>num(a.csat)>0); const q1=as.reduce((s,a)=>s+qbrDone(a),0), q2=as.reduce((s,a)=>s+qbrTarget(a),0), c1=as.reduce((s,a)=>s+cadDone(a),0), c2=as.reduce((s,a)=>s+cadTarget(a),0);
+    return {c,n:as.length,m:ms.length,e:new Set(ms.map(m=>m.accountId)).size,csat:rc.length?(rc.reduce((s,a)=>s+num(a.csat),0)/rc.length).toFixed(1):"–",q:q2?Math.round(q1/q2*100)+"%":"–",cd:c2?Math.round(c1/c2*100)+"%":"–",p:as.filter(a=>isY(a.pitched)).length,cv:as.filter(a=>a.conversion==="Converted").length,l:as.filter(a=>a.conversion==="Not Converted").length}; });
+  $("#leader").innerHTML = rows.length ? `<table class="t"><thead><tr><th>CSM</th><th class="num">Accounts</th><th class="num">Meetings</th><th class="num">Accounts engaged</th><th class="num">Avg CSAT</th><th class="num">QBR %</th><th class="num">Cadence %</th><th class="num">Pitched</th><th class="num">Converted</th><th class="num">Lost</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.c)}</b></td><td class="num">${r.n}</td><td class="num">${r.m}</td><td class="num">${r.e}</td><td class="num">${r.csat}</td><td class="num">${r.q}</td><td class="num">${r.cd}</td><td class="num">${r.p}</td><td class="num">${r.cv}</td><td class="num">${r.l}</td></tr>`).join("")}</tbody></table>` : `<div class="empty">Assign a CSM owner to accounts to see the leaderboard.</div>`;
+
+  // scorecard
+  const q=($("#scSearch").value||"").toLowerCase();
+  const sc=accts.filter(a=>!q||String(a.name).toLowerCase().includes(q)||String(a.csm||"").toLowerCase().includes(q));
+  $("#scorecard").innerHTML = sc.length ? `<table class="t"><thead><tr><th>Account</th><th>CSM</th><th>PM</th><th class="num">QBRs</th><th class="num">Cadence</th><th class="num">CSAT</th><th>Health</th><th>Conversion</th><th>Last meeting</th><th class="num">Days since</th></tr></thead><tbody>${sc.map(a=>{ const d=last[a.id]?daysBetween(last[a.id],t):null; const h=health(a);
+    return `<tr class="click" data-open="${esc(a.id)}"><td><b>${esc(a.name)}</b></td><td>${esc(a.csm)}</td><td>${esc(a.pm)}</td><td class="num">${qbrDone(a)} / ${qbrTarget(a)}</td><td class="num">${cadDone(a)} / ${cadTarget(a)}</td><td class="num">${num(a.csat)?num(a.csat).toFixed(1):"–"}</td><td><span class="pill h-${h}">${HEALTH_LABEL[h]}</span></td><td>${esc(a.conversion||"–")}</td><td>${last[a.id]?fmtDate(last[a.id]):"–"}</td><td class="num ${d===null||d>30?"late":""}">${d===null?"never":d}</td></tr>`; }).join("")}</tbody></table>`
+    : `<div class="empty">${S.accounts.size?"No accounts match.":"No accounts yet. Upload your master sheet on the Upload tab, or add accounts on the Accounts tab."}</div>`;
+
+  // monthly table
+  const nameOf=id=>(S.accounts.get(id)||{}).name||"?";
+  $("#monthTable").innerHTML=`<table class="t"><thead><tr><th>Month</th><th class="num">Meetings</th><th class="num">Accounts engaged</th><th class="num">QBRs</th><th>Accounts met</th></tr></thead><tbody>${per.map(p=>`<tr><td>${ymLabel(p.mo)}</td><td class="num">${p.ms.length}</td><td class="num">${p.accts.length}</td><td class="num">${p.ms.filter(m=>m.type==="QBR").length}</td><td class="small">${esc(p.accts.map(nameOf).sort().join(", ")||"–")}</td></tr>`).join("")}</tbody></table>`;
+}
+
+/* ---------------- accounts grid ---------------- */
+const GRID_COLS = [
+  {k:"name",l:"Account",type:"text",cls:"nm"},
+  {k:"csm",l:"CSM owner",type:"csm"},
+  {k:"pm",l:"PM",type:"text"},{k:"sdm",l:"SDM",type:"text"},{k:"tool",l:"Tool / Technology",type:"text"},
+  {k:"scopeDoc",l:"Scope doc",type:"yn"},{k:"introMail",l:"Intro mail",type:"yn"},{k:"introMeeting",l:"Intro mtg",type:"yn"},
+  {k:"csat",l:"CSAT /5",type:"num"},
+  {k:"crossSell",l:"Cross-sell?",type:"yn"},{k:"oppGenerated",l:"Opp generated",type:"yn"},{k:"pitched",l:"Assess. pitched",type:"yn"},
+  {k:"conversion",l:"Conversion",type:"sel",opts:CONV}
+];
+function cellInput(c,a){
+  const v=a[c.k]??"";
+  if(c.type==="yn") return `<select class="yn" data-f="${c.k}" data-write><option value=""></option><option ${isY(v)?"selected":""}>Y</option><option ${v&&!isY(v)?"selected":""}>N</option></select>`;
+  if(c.type==="sel") return `<select data-f="${c.k}" data-write><option value=""></option>${c.opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  if(c.type==="csm"){ const l=csmList(); return `<select data-f="${c.k}" data-write><option value=""></option>${l.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>`; }
+  if(c.type==="num") return `<input type="number" min="0" max="5" step="0.1" data-f="${c.k}" value="${esc(v)}" style="width:70px" data-write>`;
+  return `<input type="text" class="${c.cls||""}" data-f="${c.k}" value="${esc(v)}" data-write>`;
+}
+function renderAccounts(){
+  deferredGrid=false; $("#acCount").textContent=`· ${filteredAccounts().length} items`;
+  const q=($("#acSearch").value||"").toLowerCase();
+  const list=filteredAccounts().filter(a=>!q||JSON.stringify([a.name,a.csm,a.pm,a.sdm,a.tool]).toLowerCase().includes(q));
+  if(!list.length){ $("#acGrid").innerHTML=`<div class="empty">${S.accounts.size?"No accounts match the filter.":"No accounts yet. Add one, or upload your master sheet."}</div>`; return; }
+  $("#acGrid").innerHTML=`<table class="t edit-grid"><thead><tr>${GRID_COLS.map(c=>`<th>${c.l}</th>`).join("")}<th>QBRs</th><th>Cadence</th><th>Health</th><th></th></tr></thead><tbody>${list.map(a=>`<tr data-id="${esc(a.id)}">${GRID_COLS.map(c=>`<td>${cellInput(c,a)}</td>`).join("")}<td class="num">${qbrDone(a)}/${qbrTarget(a)}</td><td class="num">${cadDone(a)}/${cadTarget(a)}</td><td><span class="pill h-${health(a)}">${HEALTH_LABEL[health(a)]}</span></td><td><button class="btn sm" data-open="${esc(a.id)}">Open</button></td></tr>`).join("")}</tbody></table>`;
+}
+$("#acGrid").addEventListener("change", e=>{
+  const el=e.target; const f=el.dataset.f; if(!f) return; const id=el.closest("tr").dataset.id; const a=S.accounts.get(id); if(!a) return;
+  let v=el.value; if(f==="csat"){ v = v===""?null:Math.max(0,Math.min(5,num(v))); }
+  if(f==="name"){ v=v.trim(); if(!v){ el.value=a.name; toast("Account name can’t be empty"); return; } if(acctList().some(x=>x.id!==id && x.name.toLowerCase()===v.toLowerCase())){ el.value=a.name; toast("Another account already has that name"); return; } }
+  if((a[f]??"")===v) return;
+  const body=JSON.parse(JSON.stringify(a)); body[f]=v; saveAccount(id, body).then(()=>toast("Saved")).catch(()=>{});
+});
+$("#acGrid").addEventListener("focusout", ()=>{ setTimeout(()=>{ if(deferredGrid && !$("#acGrid").contains(document.activeElement)) renderAccounts(); },50); });
+
+/* ---------------- account drawer ---------------- */
+let dwId=null;
+function f(label, name, val, {type="text", cls="", opts=null, attrs=""}={}){
+  if(opts) return `<label class="${cls}">${label}<select name="${name}" ${attrs}><option value=""></option>${opts.map(o=>`<option ${o===val?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+  if(type==="textarea") return `<label class="${cls}">${label}<textarea name="${name}" rows="2">${esc(val)}</textarea></label>`;
+  return `<label class="${cls}">${label}<input type="${type}" name="${name}" value="${esc(val??"")}" ${attrs}></label>`;
+}
+function openAccount(id){
+  dwId=id; const isNew=!S.accounts.has(id); const a=isNew?{name:"",qbr:[{},{},{},{}],cad:{},towers:{}}:JSON.parse(JSON.stringify(S.accounts.get(id)));
+  const q=a.qbr||[]; const yn=["Y","N"]; const ynv=v=>v?(isY(v)?"Y":"N"):"";
+  $("#dwTitle").textContent=isNew?"New Account":a.name;
+  const mts=[...S.meetings.entries()].filter(([,m])=>m.accountId===id).sort((x,y)=>String(y[1].date).localeCompare(String(x[1].date)));
+  const sect=(t,body)=>`<div class="sect"><h3>${t}</h3>${body}</div>`;
+  const last=isNew?"":lastMeeting(id); const h=isNew?"None":health(a);
+  $("#dwHi").innerHTML = isNew ? "" : `<div><span>CSM owner</span><b>${esc(a.csm||"–")}</b></div><div><span>Health</span><b><span class="pill h-${h}">${HEALTH_LABEL[h]}</span></b></div><div><span>CSAT</span><b>${num(a.csat)?num(a.csat).toFixed(1):"–"}</b></div><div><span>QBRs</span><b>${qbrDone(a)} / ${qbrTarget(a)}</b></div><div><span>Cadence</span><b>${cadDone(a)} / ${cadTarget(a)}</b></div><div><span>Last meeting</span><b>${last?fmtDate(last):"–"}</b></div>`;
+  $("#dwBody").innerHTML=`<div class="path" id="dwPath">${CONV.map(c=>`<button type="button" data-stage="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+  <form id="dwForm"><input type="hidden" name="conversion" value="${esc(a.conversion||"")}">
+  ${sect("Account Information",`<div class="form">
+    ${f("Account name *","name",a.name,{cls:"span2",attrs:"required"})}${f("CSM owner","csm",a.csm,{opts:csmList()})}${f("Tool / Technology","tool",a.tool)}
+    ${f("Project manager","pm",a.pm)}${f("SDM","sdm",a.sdm)}${f("Resource(s)","resources",a.resources)}${f("Scope document (link)","scopeLink",a.scopeLink)}
+    ${f("Start date","startDate",a.startDate,{type:"date"})}${f("End date","endDate",a.endDate,{type:"date"})}</div>`)}
+  ${sect("Engagement Milestones",`<div class="form">
+    ${f("Scope doc received","scopeDoc",ynv(a.scopeDoc),{opts:yn})}${f("CSM intro mail sent","introMail",ynv(a.introMail),{opts:yn})}${f("CSM intro meeting done","introMeeting",ynv(a.introMeeting),{opts:yn})}${f("Latest CSAT (0–5)","csat",a.csat,{type:"number",attrs:'min="0" max="5" step="0.1"'})}</div>`)}
+  ${sect("Opportunities",`<div class="form">
+    ${f("Cross-sell opportunity?","crossSell",ynv(a.crossSell),{opts:yn})}${f("Cross-sell opp generated","oppGenerated",ynv(a.oppGenerated),{opts:yn})}${f("Service catalog / assessment pitched","pitched",ynv(a.pitched),{opts:yn})}<label></label>
+    ${f("Cross-sell notes","crossSellNotes",a.crossSellNotes,{cls:"span2"})}${f("Assessment / services pitched","servicesPitched",a.servicesPitched,{cls:"span2"})}
+    ${f("Existing assessment / value-add pitched","ideaExisting",a.ideaExisting,{cls:"span2"})}${f("Suggested assessment / POC to pitch","ideaSuggested",a.ideaSuggested,{cls:"span2"})}</div>`)}
+  ${sect("Quarterly Business Reviews",`<div class="form">
+    ${f("Year","qbrYear",a.qbrYear)}${f("Target per year","qbrTarget",a.qbrTarget||4,{type:"number",attrs:'min="0" step="1"'})}<label class="span2"></label>
+    ${[0,1,2,3].map(i=>f(`Q${i+1} status`,`q${i}s`,(q[i]||{}).s,{opts:QBR_ST})+f(`Q${i+1} date held`,`q${i}d`,(q[i]||{}).d,{type:"date"})).join("")}
+    ${f("QBR notes","qbrNotes",a.qbrNotes,{cls:"span4",type:"textarea"})}</div>`)}
+  ${sect("Monthly Cadence",`<div class="form" style="margin-bottom:10px">${f("Financial year","cadYear",a.cadYear)}${f("Target months","cadTarget",a.cadTarget||12,{type:"number",attrs:'min="0" step="1"'})}${f("Cadence day","cadDay",a.cadDay)}${f("Scope checklist (link)","cadDoc",a.cadDoc)}</div>
+    <div class="months">${FY_MONTHS.map(m=>f(m,"cad_"+m,(a.cad||{})[m],{opts:CAD_ST})).join("")}</div>`)}
+  ${sect("Service Towers & Contacts",`<div class="form">${TOWERS.map(t=>`<label class="chk"><input type="checkbox" name="tw_${esc(t)}" ${isY((a.towers||{})[t])?"checked":""}> ${esc(t)}</label>`).join("")}${f("Tower remark","towerRemark",a.towerRemark,{cls:"span2"})}
+    ${f("Points of contact","pocs",a.pocs,{cls:"span2"})}${f("Mapping verified?","verifyMapping",ynv(a.verifyMapping),{opts:yn})}</div>`)}
+  </form>
+  ${isNew?"":sect(`Meetings (${mts.length})`,`<div class="toolbar"><div class="grow"></div><button class="btn sm" data-log="${esc(id)}" data-write>New meeting</button></div>
+   <table class="t"><thead><tr><th>Date</th><th>Type</th><th>Summary</th></tr></thead><tbody>${mts.slice(0,30).map(([,m])=>`<tr><td style="white-space:nowrap">${fmtDate(m.date)}</td><td>${esc(m.type)}</td><td class="small">${esc(m.summary)}</td></tr>`).join("")||`<tr><td colspan="3" class="small">No meetings logged.</td></tr>`}</tbody></table>
+   <p class="small" id="dwStamp" style="margin:10px 0 0"></p>`)}`;
+  paintPath();
+  $("#dwDelete").style.display=isNew?"none":"";
+  $("#drawer").classList.add("on"); $("#drawerBg").classList.add("on");
+  if(!isNew && a.updatedAt){ $("#dwStamp").textContent=`Last updated ${a.updatedBy?"by @"+a.updatedBy+", ":""}${new Date(a.updatedAt).toLocaleString()}`; }
+  applyWriteState();
+  setTimeout(()=>{ const n=$("#dwForm [name=name]"); if(isNew&&n) n.focus(); },50);
+}
+function paintPath(){ const v=($("#dwForm [name=conversion]")||{}).value||""; const idx=CONV.indexOf(v);
+  $$("#dwPath button").forEach((b,i)=>{ b.className=""; const st=b.dataset.stage;
+    if(st===v) b.className = v==="Not Converted"?"lost":"cur";
+    else if(idx>=0 && i<idx && i<2) b.className="done"; }); }
+document.addEventListener("click",e=>{ const b=e.target.closest("#dwPath button"); if(!b||!S.canWrite) return; const h=$("#dwForm [name=conversion]"); h.value = h.value===b.dataset.stage?"":b.dataset.stage; paintPath(); });
+function closeDrawer(){ $("#drawer").classList.remove("on"); $("#drawerBg").classList.remove("on"); dwId=null; }
+$("#dwClose").onclick=$("#dwCancel").onclick=$("#drawerBg").onclick=closeDrawer;
+$("#dwSave").onclick=async()=>{
+  const fm=$("#dwForm"); const fd=new FormData(fm); const g=k=>(fd.get(k)??"").toString().trim();
+  const name=g("name"); if(!name){ toast("Account name is required"); return; }
+  if(acctList().some(x=>x.id!==dwId && x.name.toLowerCase()===name.toLowerCase())){ toast("Another account already has that name"); return; }
+  const isNew=!S.accounts.has(dwId); const base=isNew?{}:JSON.parse(JSON.stringify(S.accounts.get(dwId)));
+  const keys=["name","csm","tool","pm","sdm","resources","scopeLink","startDate","endDate","scopeDoc","introMail","introMeeting","crossSell","oppGenerated","pitched","conversion","crossSellNotes","servicesPitched","ideaExisting","ideaSuggested","qbrYear","qbrNotes","cadYear","cadDay","cadDoc","towerRemark","pocs","verifyMapping"];
+  keys.forEach(k=>base[k]=g(k));
+  base.csat = g("csat")===""?null:Math.max(0,Math.min(5,num(g("csat"))));
+  base.qbrTarget = g("qbrTarget")===""?4:num(g("qbrTarget")); base.cadTarget = g("cadTarget")===""?12:num(g("cadTarget"));
+  base.qbr=[0,1,2,3].map(i=>({s:g(`q${i}s`),d:g(`q${i}d`)}));
+  base.cad={}; FY_MONTHS.forEach(m=>{ const v=g("cad_"+m); if(v) base.cad[m]=v; });
+  base.towers={}; TOWERS.forEach(t=>{ base.towers[t]=fd.get("tw_"+t)?"Y":"N"; });
+  const id = isNew ? newAcctId(name) : dwId;
+  try{ await saveAccount(id, base); toast(isNew?"Account added":"Saved"); closeDrawer(); }catch(e){}
+};
+$("#dwDelete").onclick=async()=>{
+  const id=dwId; const a=S.accounts.get(id); if(!a) return;
+  const ms=[...S.meetings.entries()].filter(([,m])=>m.accountId===id);
+  if(!await confirmBox("Delete account?",`“${a.name}” and its ${ms.length} logged meeting(s) will be removed for everyone.`,"Delete")) return;
+  closeDrawer(); for(const [mid] of ms) await deleteMeeting(mid).catch(()=>{}); await deleteAccount(id).catch(()=>{}); toast("Account deleted");
+};
+$("#btnAddAcct").onclick=()=>openAccount("__new__");
+document.addEventListener("click", e=>{
+  const o=e.target.closest("[data-open]"); if(o && !e.target.closest("[data-log]")){ openAccount(o.dataset.open); return; }
+  const l=e.target.closest("[data-log]"); if(l){ closeDrawer(); location.hash="#meetings"; $("#mtAcct").value=l.dataset.log; $("#mtSum").focus(); }
+});
+
+/* ---------------- meetings ---------------- */
+function typeOptions(){ const extra=new Set(); for(const m of S.meetings.values()) if(m.type && !TYPES.includes(m.type)) extra.add(m.type); return [...TYPES,...extra]; }
+let editingMeeting=null;
+function renderMeetingsView(){
+  const accts=acctList(); const cur=$("#mtAcct").value, cf=$("#mfAcct").value, tf=$("#mfType").value;
+  $("#mtAcct").innerHTML=`<option value="">Select account…</option>`+accts.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+  $("#mtAcct").value=cur;
+  $("#mfAcct").innerHTML=`<option value="">All accounts</option>`+accts.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join(""); $("#mfAcct").value=cf;
+  const tys=typeOptions(); const ct=$("#mtType").value;
+  $("#mtType").innerHTML=tys.map(t=>`<option>${esc(t)}</option>`).join(""); if(ct) $("#mtType").value=ct;
+  $("#mfType").innerHTML=`<option value="">All types</option>`+tys.map(t=>`<option>${esc(t)}</option>`).join(""); $("#mfType").value=tf;
+  if(!$("#mtDate").value) $("#mtDate").value=todayISO();
+  const c=sel(), q=($("#mfSearch").value||"").toLowerCase();
+  const list=[...S.meetings.entries()].map(([id,m])=>({id,...m,acct:S.accounts.get(m.accountId)}))
+    .filter(m=>m.acct && (c==="All"||m.acct.csm===c) && (!cf||m.accountId===cf) && (!tf||m.type===tf) && (!q||(String(m.summary)+" "+String(m.next)+" "+m.acct.name).toLowerCase().includes(q)))
+    .sort((x,y)=>String(y.date).localeCompare(String(x.date)));
+  $("#mtCount").textContent=`· ${list.length} items`;
+  $("#mtTable").innerHTML = list.length ? `<table class="t"><thead><tr><th>Date</th><th>Account</th><th>CSM</th><th>Type</th><th>Summary</th><th>Next steps</th><th></th></tr></thead><tbody>${list.slice(0,500).map(m=>`<tr><td style="white-space:nowrap">${fmtDate(m.date)}</td><td><b>${esc(m.acct.name)}</b></td><td>${esc(m.acct.csm)}</td><td>${esc(m.type)}</td><td>${esc(m.summary)}</td><td class="small">${esc(m.next)}</td><td style="white-space:nowrap"><button class="btn sm" data-medit="${esc(m.id)}" data-write>Edit</button> <button class="btn sm danger" data-mdel="${esc(m.id)}" data-write>Delete</button></td></tr>`).join("")}</tbody></table>${list.length>500?`<p class="small">Showing latest 500 of ${list.length}. Use the filters to narrow.</p>`:""}`
+    : `<div class="empty">${S.meetings.size?"No meetings match.":"No meetings logged yet."}</div>`;
+}
+$("#mtForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const accountId=$("#mtAcct").value, date=$("#mtDate").value; if(!accountId||!date){ toast("Pick an account and date"); return; }
+  const body={accountId,date,type:$("#mtType").value,summary:$("#mtSum").value.trim(),next:$("#mtNext").value.trim()};
+  const id = editingMeeting || ("m-"+Date.now().toString(36)+Math.random().toString(36).slice(2,7));
+  try{ await saveMeeting(id, body); toast(editingMeeting?"Meeting updated":"Meeting saved"); editingMeeting=null; $("#mtForm button[type=submit]").textContent="Save meeting"; $("#mtSum").value=""; $("#mtNext").value=""; }catch(err){}
+});
+$("#mtTable").addEventListener("click", async e=>{
+  const ed=e.target.closest("[data-medit]"), del=e.target.closest("[data-mdel]");
+  if(ed){ const m=S.meetings.get(ed.dataset.medit); if(!m) return; editingMeeting=ed.dataset.medit; $("#mtAcct").value=m.accountId; $("#mtDate").value=m.date; $("#mtType").value=m.type; $("#mtSum").value=m.summary||""; $("#mtNext").value=m.next||""; $("#mtForm button[type=submit]").textContent="Update meeting"; window.scrollTo({top:0,behavior:"smooth"}); }
+  if(del){ if(await confirmBox("Delete meeting?","This removes it for everyone.","Delete")){ await deleteMeeting(del.dataset.mdel).catch(()=>{}); toast("Meeting deleted"); } }
+});
+["#mfAcct","#mfType"].forEach(s=>$(s).addEventListener("change",renderMeetingsView));
+$("#mfSearch").addEventListener("input",renderMeetingsView);
+
+/* ---------------- settings: CSMs ---------------- */
+function renderCsmSettings(){
+  const fromAccts=new Set(acctList().map(a=>a.csm).filter(Boolean));
+  $("#csmList").innerHTML = csmList().map(c=>`<span class="pill" style="background:var(--surface-2);color:var(--text);margin:0 6px 6px 0">${esc(c)}${S.settings.csms.includes(c)&&!fromAccts.has(c)?` <button class="btn sm" style="padding:0 6px;border:0" data-rmcsm="${esc(c)}" data-write>×</button>`:""}</span>`).join("") || `<span class="small">No CSMs yet.</span>`;
+}
+$("#btnAddCsm").onclick=async()=>{ const v=$("#newCsm").value.trim(); if(!v) return; if(!S.settings.csms.includes(v)) S.settings.csms.push(v); $("#newCsm").value=""; await saveSettings().catch(()=>{}); scheduleRender(); };
+$("#csmList").addEventListener("click", async e=>{ const b=e.target.closest("[data-rmcsm]"); if(!b) return; S.settings.csms=S.settings.csms.filter(c=>c!==b.dataset.rmcsm); await saveSettings().catch(()=>{}); scheduleRender(); });
+
+/* ---------------- import ---------------- */
+const norm = h => String(h??"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const MASTER_MAP = {
+  accountname:"name",account:"name",projectname:"name",customername:"name",csmowner:"csm",csm:"csm",csmname:"csm",
+  projectmanager:"pm",pm:"pm",sdm:"sdm",tooltechnology:"tool",tool:"tool",technology:"tool",resources:"resources",resource:"resources",
+  startdate:"startDate",enddate:"endDate",scopedocreceivedyn:"scopeDoc",scopedocreceived:"scopeDoc",csmintromailsentyn:"introMail",csmintromailsent:"introMail",
+  csmintromeetingdoneyn:"introMeeting",csmintromeetingdone:"introMeeting",qbrscompleted:"qbrDoneManual",qbrtarget:"qbrTarget",
+  monthscadencecompleted:"cadDoneManual",cadencetarget:"cadTarget",latestcsat5:"csat",latestcsat:"csat",csat:"csat",
+  crosssellopportunityyn:"crossSell",crosssellopportunity:"crossSell",crosssellnotes:"crossSellNotes",crosssellopportunitygenerated:"oppGenerated",
+  renewalcrosssellstageconversionstatus:"conversion",conversionstatus:"conversion",servicecatalogpitchedassessmentspitched:"pitched",
+  assessmentservicespitched:"servicesPitched",scopedocument:"scopeLink"
+};
+const YN_FIELDS=new Set(["scopeDoc","introMail","introMeeting","crossSell","oppGenerated","pitched","verifyMapping"]);
+const DATE_FIELDS=new Set(["startDate","endDate"]);
+function toISODate(v){
+  if(v===null||v===undefined||v==="") return "";
+  if(typeof v==="number" && v>20000 && v<80000){ const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000); return iso(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()); }
+  if(v instanceof Date && !isNaN(v)) return iso(v.getFullYear(),v.getMonth()+1,v.getDate());
+  const s=String(v).trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return iso(+m[1],+m[2],+m[3]);
+  if((m=s.match(/^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{2,4})$/))){ let y=+m[3]; if(y<100) y+=2000; return iso(y,+m[2],+m[1]); } // dd/mm/yyyy (India)
+  if((m=s.match(/^(\d{1,2})[\-\s]([A-Za-z]{3})[A-Za-z]*[\-\s,]*(\d{2,4})$/))){ const mi=MON.findIndex(x=>x.toLowerCase()===m[2].toLowerCase()); let y=+m[3]; if(y<100) y+=2000; if(mi>=0) return iso(y,mi+1,+m[1]); }
+  const t=Date.parse(s); if(!isNaN(t)){ const d=new Date(t); return iso(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+  return "";
+}
+function ynVal(v){ const s=String(v??"").trim(); if(!s) return ""; return /^y/i.test(s)?"Y":/^n/i.test(s)?"N":s; }
+function matchList(v,list){ const s=String(v??"").trim(); if(!s) return ""; const n=norm(s); return list.find(o=>norm(o)===n) || list.find(o=>n.startsWith(norm(o))||norm(o).startsWith(n)) || s; }
+function matchType(v){ const s=String(v??"").trim(); if(!s) return "Others"; const n=norm(s);
+  const ex=TYPES.find(t=>norm(t)===n); if(ex) return ex;
+  const pre=TYPES.find(t=>n.startsWith(norm(t))||norm(t).startsWith(n)); if(pre) return pre;
+  if(n.includes("qbr")) return "QBR"; if(n.includes("escalat")) return "Escalation Meeting"; if(n.includes("actionitem")) return "Action Item Review"; if(n.includes("weekly")) return "Weekly Meeting"; if(n.includes("monthly")||n.includes("cadence")) return "Monthly Cadence"; if(n.includes("intro")) return "CSM Introduction"; if(n.includes("opportun")) return "Opportunity Discussion"; if(n.includes("technical")) return "Technical Discussion"; if(n.includes("followup")) return "CSM Follow up Meeting"; if(n.startsWith("pm")) return "PM Meeting";
+  return s; }
+function headerMonth(h){ if(typeof h==="number" && h>20000){ const d=toISODate(h); return MON[+d.slice(5,7)-1]; } const s=String(h??"").trim(); const mi=MON.findIndex(m=>s.toLowerCase().startsWith(m.toLowerCase())); return mi>=0?MON[mi]:null; }
+
+// rows: array of arrays (first non-empty header row detected). returns {headers, rows}
+function tableOf(aoa){
+  const isNameHdr=r=>r.some(c=>["accountname","projectname","account","customername"].includes(norm(c)));
+  let hi=aoa.findIndex((r,i)=>i<15 && r && isNameHdr(r)); if(hi<0) return null;
+  const headers=aoa[hi]; const rows=aoa.slice(hi+1).filter(r=>r && r.some(c=>c!==null&&c!==""&&c!==undefined));
+  return {headers, rows};
+}
+function classify(sheetName, tbl){
+  const n=norm(sheetName), hs=tbl.headers.map(norm);
+  if(n.includes("masteraccount")) return "master";
+  if(n==="meetings"||hs.includes("meetingdate")) return "meetings";
+  if(n.includes("qbrtracker")||hs.includes("q1status")) return "qbr";
+  if(n.includes("qbrmonthlydetail")) return "skip";
+  if(n.includes("cadence")||hs.includes("monthlycadencedate")) return "cadence";
+  if(n.includes("towermap")||hs.includes("socedrxdrsiem")) return "towers";
+  if(n.includes("ideas")||hs.includes("suggestedassessmentpoctopitch")) return "ideas";
+  if(n.includes("pocmapping")||hs.includes("pointsofcontact")) return "poc";
+  if(n.includes("activitytrend")||n.includes("executivesummary")||n.includes("csatsurvey")) return "skip";
+  if(hs.some(h=>MASTER_MAP[h] && MASTER_MAP[h]!=="name")) return "master";
+  return "skip";
+}
+// Build an import plan from {sheetName: aoa}
+function buildPlan(book){
+  const patches=new Map(); // lowercase name -> {name, fields}
+  const meetings=[]; const found=[]; const skipped=[];
+  const P=name=>{ const nm=String(name??"").trim(); if(!nm) return null; const k=nm.toLowerCase(); if(!patches.has(k)) patches.set(k,{name:nm,fields:{}}); return patches.get(k).fields; };
+  for(const [sn,aoa] of Object.entries(book)){
+    const tbl=tableOf(aoa); if(!tbl){ skipped.push(sn); continue; }
+    const kind=classify(sn,tbl); if(kind==="skip"){ skipped.push(sn); continue; }
+    const H=tbl.headers.map(norm); const col=k=>H.indexOf(k); const nameIdx=H.findIndex(h=>["accountname","projectname","account","customername"].includes(h));
+    let used=0;
+    for(const r of tbl.rows){
+      const nm=r[nameIdx]; if(nm===null||nm===undefined||String(nm).trim()==="") continue;
+      if(kind==="meetings"){ const d=toISODate(r[col("meetingdate")]); if(!d) continue;
+        meetings.push({name:String(nm).trim(),date:d,type:matchType(r[col("meetingtype")]),summary:String(r[col("meetingsummary")]??"").trim(),next:String(r[col("remarksnextsteps")]??"").trim()}); used++; continue; }
+      const p=P(nm); used++;
+      if(kind==="master"){ H.forEach((h,i)=>{ const fk=MASTER_MAP[h]; const v=r[i]; if(!fk||fk==="name"||v===null||v===undefined||String(v).trim()==="") return;
+          if(YN_FIELDS.has(fk)) p[fk]=ynVal(v); else if(DATE_FIELDS.has(fk)) { const d=toISODate(v); if(d) p[fk]=d; }
+          else if(fk==="csat"||fk==="qbrTarget"||fk==="cadTarget"||fk==="qbrDoneManual"||fk==="cadDoneManual"){ const x=num(v); if(isFinite(x)) p[fk]= fk==="csat"?Math.max(0,Math.min(5,x)):x; }
+          else if(fk==="conversion") p[fk]=matchList(v,CONV); else p[fk]=String(v).trim(); }); }
+      if(kind==="qbr"){ const q=[]; let any=false; for(let i=1;i<=4;i++){ const s=matchList(r[col(`q${i}status`)],QBR_ST), d=toISODate(r[col(`q${i}dateheld`)]); if(s||d) any=true; q.push({s,d}); }
+        if(any) p.qbr=q; const y=r[col("year")]; if(y!==null&&y!==undefined&&y!=="") p.qbrYear=String(y); const t=r[col("target")]; if(num(t)) p.qbrTarget=num(t); const nt=r[col("qbrnotes")]; if(nt) p.qbrNotes=String(nt); }
+      if(kind==="cadence"){ const cad={}; tbl.headers.forEach((h,i)=>{ const m=headerMonth(h); if(!m||!FY_MONTHS.includes(m)) return; if(norm(h).length>6 && typeof h!=="number") return; const v=r[i]; if(v!==null&&v!==undefined&&String(v).trim()!=="") cad[m]=matchList(v,CAD_ST); });
+        if(Object.keys(cad).length) p.cad=cad; const y=r[col("year")]; if(y) p.cadYear=String(y); const t=r[col("target")]; if(num(t)) p.cadTarget=num(t); const dd=r[col("monthlycadencedate")]; if(dd) p.cadDay=String(dd); const doc=r[col("monthlyscopechecklistdocument")]; if(doc) p.cadDoc=String(doc); }
+      if(kind==="towers"){ const tw={}; let any=false; TOWERS.forEach(t=>{ const i=H.indexOf(norm(t)); if(i>=0 && r[i]!==null && r[i]!==undefined && String(r[i]).trim()!==""){ tw[t]=isY(r[i])?"Y":"N"; any=true; } }); if(any) p.towers=tw; const rm=r[col("remark")]; if(rm) p.towerRemark=String(rm); }
+      if(kind==="ideas"){ const a=r[col("existingassessmentvalueaddpitched")], b=r[col("suggestedassessmentpoctopitch")]; if(a) p.ideaExisting=String(a); if(b) p.ideaSuggested=String(b); }
+      if(kind==="poc"){ const a=r[col("pointsofcontact")], b=r[col("verifymapping")]; if(a) p.pocs=String(a); if(b) p.verifyMapping=ynVal(b); }
+    }
+    found.push({sheet:sn,kind,rows:used});
+  }
+  for(const m of meetings) P(m.name); // ensure every meeting's account exists
+  return {patches,meetings,found,skipped};
+}
+let PLAN=null;
+function readFile(file){
+  if(typeof XLSX==="undefined"){ toast("The Excel reader didn’t load. Check your connection and reload the page."); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{ try{
+      const wb=XLSX.read(new Uint8Array(fr.result),{type:"array",cellDates:false});
+      const book={}; wb.SheetNames.forEach(n=>{ book[n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null,blankrows:false}); });
+      PLAN=buildPlan(book); PLAN.file=file.name; showPreview();
+    }catch(e){ $("#preview").innerHTML=`<p class="late">Couldn’t read that file: ${esc(e.message)}</p>`; } };
+  fr.readAsArrayBuffer(file);
+}
+function showPreview(){
+  const p=PLAN; const existing=new Map(acctList().map(a=>[a.name.toLowerCase(),a.id]));
+  let nNew=0,nUpd=0; for(const k of p.patches.keys()) existing.has(k)?nUpd++:nNew++;
+  const kinds={master:"Master account tracker",meetings:"Meetings",qbr:"QBR tracker",cadence:"Monthly cadence",towers:"Tower map",ideas:"Ideas to pitch",poc:"POC mapping"};
+  $("#preview").innerHTML=`<h2>${esc(p.file)}</h2>
+   <table class="t" style="margin:8px 0"><thead><tr><th>Sheet</th><th>Read as</th><th class="num">Rows</th></tr></thead><tbody>${p.found.map(x=>`<tr><td>${esc(x.sheet)}</td><td>${kinds[x.kind]}</td><td class="num">${x.rows}</td></tr>`).join("")}${p.skipped.map(s=>`<tr><td>${esc(s)}</td><td class="small">skipped (summary or no account column)</td><td></td></tr>`).join("")}</tbody></table>
+   <div class="kv"><span><b>${nNew}</b> new accounts</span><span><b>${nUpd}</b> accounts updated</span><span><b>${p.meetings.length}</b> meetings</span></div>
+   ${p.patches.size||p.meetings.length?`<div style="display:flex;gap:14px;align-items:center;margin:10px 0;flex-wrap:wrap">
+     <label class="chk"><input type="radio" name="imode" value="merge" checked> Merge into existing data</label>
+     <label class="chk"><input type="radio" name="imode" value="replace"> Replace all data</label></div>
+   <button class="btn primary" id="btnApply" data-write>Apply upload</button> <button class="btn" id="btnCancelImp">Cancel</button>
+   <div class="progress" id="prog" style="display:none"><div></div></div><p class="small" id="progTxt"></p>`:`<p class="late">Nothing to import: no sheet with an “Account Name” or “Project Name” column was found.</p>`}`;
+  applyWriteState();
+  const ap=$("#btnApply"); if(ap) ap.onclick=applyPlan; const cn=$("#btnCancelImp"); if(cn) cn.onclick=()=>{PLAN=null;$("#preview").innerHTML="";$("#file").value="";};
+}
+async function pool(tasks, n, onTick){ let i=0, done=0; const worker=async()=>{ while(i<tasks.length){ const t=tasks[i++]; await t(); done++; onTick&&onTick(done); } }; await Promise.all(Array.from({length:Math.min(n,tasks.length)},worker)); }
+async function applyPlan(){
+  const p=PLAN; if(!p) return; const mode=($("input[name=imode]:checked")||{}).value||"merge";
+  if(mode==="replace" && !await confirmBox("Replace all data?",`Every existing account (${S.accounts.size}) and meeting (${S.meetings.size}) will be deleted for everyone, then the file is loaded.`,"Replace all")) return;
+  $("#btnApply").disabled=true; const prog=$("#prog"); prog.style.display="block";
+  const setP=(d,t,txt)=>{ prog.firstElementChild.style.width=(t?Math.round(d/t*100):100)+"%"; $("#progTxt").textContent=txt; };
+  try{
+    if(mode==="replace"){ const del=[...[...S.meetings.keys()].map(id=>()=>deleteMeeting(id)),...[...S.accounts.keys()].map(id=>()=>deleteAccount(id))]; await pool(del,6,d=>setP(d,del.length,`Clearing… ${d}/${del.length}`)); if(S.mode==="local"){ S.accounts.clear(); S.meetings.clear(); } }
+    const byName=new Map(mode==="replace"?[]:acctList().map(a=>[a.name.toLowerCase(),a.id]));
+    const taken=new Set(mode==="replace"?[]:S.accounts.keys());
+    const tasks=[];
+    for(const [k,pt] of p.patches){
+      let id=byName.get(k), base;
+      if(id){ base=JSON.parse(JSON.stringify(S.accounts.get(id))); }
+      else { let b="a-"+slug(pt.name), c=b, i=2; while(taken.has(c)) c=b+"-"+(i++); id=c; taken.add(id); byName.set(k,id); base={name:pt.name}; }
+      const merged=Object.assign(base,pt.fields); if(pt.fields.towers) merged.towers=Object.assign({}, (base.towers||{}), pt.fields.towers);
+      const strip=o=>{ const c=clone(o); delete c.updatedAt; delete c.updatedBy; return JSON.stringify(c,Object.keys(c).sort()); };
+      if(S.accounts.has(id) && strip(merged)===strip(S.accounts.get(id))) continue;
+      tasks.push(()=>saveAccount(id,merged));
+    }
+    const existingKeys=new Set(mode==="replace"?[]:[...S.meetings.entries()].map(([id,m])=>meetingKey(m)));
+    const existingIds=new Set(mode==="replace"?[]:S.meetings.keys());
+    let dup=0;
+    for(const m of p.meetings){ const accountId=byName.get(m.name.toLowerCase()); const body={accountId,date:m.date,type:m.type,summary:m.summary,next:m.next}; const id=meetingKey(body);
+      if(existingIds.has(id)||existingKeys.has(id)){ dup++; continue; } existingIds.add(id); tasks.push(()=>saveMeeting(id,body)); }
+    await pool(tasks,6,d=>setP(d,tasks.length,`Preparing… ${d}/${tasks.length}`));
+    if(S.mode==="github"){ setP(1,1,"Committing to GitHub…"); await flushNow(); if(syncState==="error") throw new Error("GitHub save failed. It will retry automatically; keep this page open"); }
+    setP(1,1,`Done: ${p.patches.size} accounts, ${p.meetings.length-dup} meetings added${dup?`, ${dup} duplicates skipped`:""}.`);
+    toast("Upload applied"); PLAN=null; $("#file").value=""; setTimeout(()=>{ location.hash="#dashboard"; },900);
+  }catch(e){ $("#progTxt").textContent="Stopped: "+(e&&e.message||"an error occurred")+". Data saved so far is kept; you can apply again safely."; $("#btnApply").disabled=false; }
+}
+$("#file").addEventListener("change",e=>{ const f=e.target.files[0]; if(f) readFile(f); });
+const drop=$("#drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+
+/* ---------------- export ---------------- */
+$("#btnExport").onclick=async()=>{
+  if(typeof XLSX==="undefined"){ toast("The Excel writer didn’t load. Check your connection and reload."); return; }
+  const accts=acctList(); const name=id=>(S.accounts.get(id)||{}).name||"";
+  const yn=v=>v?(isY(v)?"Y":"N"):"";
+  const master=[["Sr","Account Name","Project Manager","SDM","Tool / Technology","Resource(s)","Start Date","End Date","Scope Doc Received (Y/N)","CSM Intro Mail Sent (Y/N)","CSM Intro Meeting Done (Y/N)","QBRs Completed","QBR Target","QBR %","Months Cadence Completed","Cadence Target","Cadence %","Latest CSAT (/5)","Cross-Sell Opportunity? (Y/N)","Cross-Sell Notes","Cross Sell Opportunity generated","Renewal/Cross Sell Stage Conversion status","Service Catalog pitched/Assessments pitched","Assessment/Services Pitched","Scope Document","CSM Owner","Health","Last Meeting"]];
+  accts.forEach((a,i)=>master.push([i+1,a.name,a.pm,a.sdm,a.tool,a.resources,a.startDate,a.endDate,yn(a.scopeDoc),yn(a.introMail),yn(a.introMeeting),qbrDone(a),qbrTarget(a),qbrTarget(a)?qbrDone(a)/qbrTarget(a):0,cadDone(a),cadTarget(a),cadTarget(a)?cadDone(a)/cadTarget(a):0,num(a.csat)||"",yn(a.crossSell),a.crossSellNotes,yn(a.oppGenerated),a.conversion,yn(a.pitched),a.servicesPitched,a.scopeLink,a.csm,HEALTH_LABEL[health(a)],lastMeeting(a.id)]));
+  const meet=[["Project Name","Meeting Date","Meeting Type","Meeting Summary","Remarks/Next Steps","Month #","Year","CSM"]];
+  [...S.meetings.values()].sort((x,y)=>String(x.date).localeCompare(String(y.date))).forEach(m=>meet.push([name(m.accountId),m.date,m.type,m.summary,m.next,m.date?+m.date.slice(5,7):"",m.date?+m.date.slice(0,4):"",(S.accounts.get(m.accountId)||{}).csm||""]));
+  const qbr=[["Sr","Account Name","Year","Q1 Status","Q1 Date Held","Q2 Status","Q2 Date Held","Q3 Status","Q3 Date Held","Q4 Status","Q4 Date Held","QBR Notes","QBRs Completed","Target","QBR %"]];
+  accts.forEach((a,i)=>{ const q=a.qbr||[]; qbr.push([i+1,a.name,a.qbrYear||"",...[0,1,2,3].flatMap(k=>[(q[k]||{}).s||"",(q[k]||{}).d||""]),a.qbrNotes||"",qbrDone(a),qbrTarget(a),qbrTarget(a)?qbrDone(a)/qbrTarget(a):0]); });
+  const cad=[["Sr","Account Name","Year","Cadence","Monthly Cadence Date",...FY_MONTHS,"Months Completed","Target","Cadence %","Monthly Scope checklist document"]];
+  accts.forEach((a,i)=>cad.push([i+1,a.name,a.cadYear||"","Monthly",a.cadDay||"",...FY_MONTHS.map(m=>(a.cad||{})[m]||""),cadDone(a),cadTarget(a),cadTarget(a)?cadDone(a)/cadTarget(a):0,a.cadDoc||""]));
+  const tw=[["Project Name",...TOWERS,"Remark"]]; accts.forEach(a=>tw.push([a.name,...TOWERS.map(t=>yn((a.towers||{})[t])),a.towerRemark||""]));
+  const ideas=[["Sr","Account Name","Tool / Technology","Existing Assessment/Value-Add Pitched","Suggested Assessment/POC to Pitch"]]; accts.forEach((a,i)=>ideas.push([i+1,a.name,a.tool||"",a.ideaExisting||"",a.ideaSuggested||""]));
+  const poc=[["Sr","Account Name","Project Manager","SDM","No. of Towers","Points of Contact","Verify Mapping?"]]; accts.forEach((a,i)=>poc.push([i+1,a.name,a.pm||"",a.sdm||"",TOWERS.filter(t=>isY((a.towers||{})[t])).length,a.pocs||"",yn(a.verifyMapping)]));
+  const wb=XLSX.utils.book_new();
+  const add=(rows,n,w)=>{ const ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=rows[0].map((_,i)=>({wch:w&&w[i]||16})); XLSX.utils.book_append_sheet(wb,ws,n); };
+  add(master,"Master Account Tracker",[5,24]); add(meet,"Meetings",[24,12,22,40,36]); add(qbr,"QBR Tracker",[5,24]); add(cad,"Monthly Cadence Tracker",[5,24]); add(tw,"Tower map",[24]); add(ideas,"Ideas to Pitch Assessments",[5,24,20,36,36]); add(poc,"Account Towers - POC Mapping",[5,24]);
+  const out=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  const fname=`CSM_Tracker_${todayISO()}.xlsx`;
+  const url=URL.createObjectURL(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  const a=document.createElement("a"); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); toast("Downloaded "+fname);
+};
+
+/* ---------------- connection UI ---------------- */
+$("#ghForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const cfg={owner:$("#ghOwner").value.trim(),repo:$("#ghRepo").value.trim(),branch:$("#ghBranch").value.trim()||"main",path:($("#ghPath").value.trim()||"data/csm-data.json").replace(/^\/+/,"")};
+  const token=$("#ghToken").value.trim() || (GH.token && GH.cfg ? GH.token : "");
+  if(!cfg.owner||!cfg.repo){ toast("Enter the owner and repository"); return; }
+  if(!token){ toast("Paste your GitHub token"); return; }
+  const btn=$("#btnConnect"); btn.disabled=true; btn.textContent="Connecting…";
+  if(GH.pending.length) await flushNow();
+  let failed=null;
+  try{ await connect(cfg, token); }catch(err){ failed=err; }
+  btn.disabled=false; renderConn();
+  if(failed){ toast(failed.message); $("#ghState").innerHTML=`<span class="late">Connection failed: ${esc(failed.message)}</span>`; if(S.mode!=="github") setSync("local"); }
+});
+$("#btnDisconnect").onclick=()=>disconnect();
+$("#btnRefresh").onclick=async()=>{ if(S.mode!=="github"){ toast("Not connected to GitHub"); return; } if(GH.pending.length){ await flushNow(); } GH.etag=null; await pollRemote(); toast("Up to date"); };
+
+/* ---------------- global search ---------------- */
+let gIdx=0;
+function gRender(){ const q=$("#gSearch").value.trim().toLowerCase(); const box=$("#gRes"); if(!q){ box.classList.remove("on"); return; }
+  const hits=acctList().filter(a=>JSON.stringify([a.name,a.csm,a.pm,a.sdm,a.tool]).toLowerCase().includes(q)).slice(0,8);
+  box.innerHTML = hits.length ? hits.map((a,i)=>`<div data-gopen="${esc(a.id)}" class="${i===gIdx?"act":""}"><div class="icon sm" style="background:var(--ic-acct)"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5zm4-13v2h2V8zm6 0v2h2V8zm-6 4v2h2v-2zm6 0v2h2v-2z"/></svg></div><span><span style="color:var(--brand)">${esc(a.name)}</span><br><span class="small">Account · ${esc(a.csm||"No CSM")} · ${esc(a.tool||"")}</span></span></div>`).join("") : `<div class="small">No accounts match “${esc(q)}”</div>`;
+  box.classList.add("on"); }
+$("#gSearch").addEventListener("input",()=>{ gIdx=0; gRender(); });
+$("#gSearch").addEventListener("keydown",e=>{ const items=$$("#gRes [data-gopen]"); if(e.key==="ArrowDown"){ gIdx=Math.min(items.length-1,gIdx+1); gRender(); e.preventDefault(); } else if(e.key==="ArrowUp"){ gIdx=Math.max(0,gIdx-1); gRender(); e.preventDefault(); } else if(e.key==="Enter" && items[gIdx]){ openAccount(items[gIdx].dataset.gopen); $("#gSearch").value=""; gRender(); } else if(e.key==="Escape"){ $("#gSearch").value=""; gRender(); } });
+$("#gRes").addEventListener("mousedown",e=>{ const d=e.target.closest("[data-gopen]"); if(d){ e.preventDefault(); openAccount(d.dataset.gopen); $("#gSearch").value=""; gRender(); } });
+$("#gSearch").addEventListener("blur",()=>setTimeout(()=>$("#gRes").classList.remove("on"),150));
+
+/* ---------------- routing / tooltip / boot ---------------- */
+function route(){ const v=(location.hash||"#dashboard").slice(1); const ok=["dashboard","accounts","meetings","import"].includes(v)?v:"dashboard";
+  $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+ok)); $$("nav.tabs a").forEach(a=>a.classList.toggle("on",a.dataset.v===ok)); }
+window.addEventListener("hashchange",route);
+const tip=$("#tip");
+document.addEventListener("mousemove",e=>{ const t=e.target.closest&&e.target.closest("[data-tip]"); if(!t){ tip.style.display="none"; return; } tip.textContent=t.getAttribute("data-tip"); tip.style.display="block";
+  const w=tip.offsetWidth, h=tip.offsetHeight; let x=e.clientX+14, y=e.clientY+14; if(x+w>innerWidth-8) x=e.clientX-w-14; if(y+h>innerHeight-8) y=e.clientY-h-14; tip.style.left=x+"px"; tip.style.top=y+"px"; });
+$("#fCsm").addEventListener("change",()=>{ S.wantCsm=$("#fCsm").value; try{localStorage.setItem("csm.f",$("#fCsm").value);}catch(e){} renderAll(); });
+$("#fStart").addEventListener("change",()=>{ if(!$("#fStart").value) $("#fStart").value=defaultStart(); renderDashboard(); });
+$("#scSearch").addEventListener("input",renderDashboard);
+$("#acSearch").addEventListener("input",renderAccounts);
+function defaultStart(){ const d=new Date(); return addMonths(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,-11); }
+$("#fStart").value=defaultStart();
+try{ const s=localStorage.getItem("csm.f"); if(s) S.wantCsm=s; }catch(e){}
+route(); renderAll(); init();
+</script>
+</body>
+</html>
